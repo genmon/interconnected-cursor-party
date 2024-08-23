@@ -115,11 +115,11 @@ export default function QuietMode({
   // The quietMode button should have a nice transition between the two visibility modes
   const showQuietMode = quietMode || isBusy;
   const visibilityStyles = {
-    visibility: (showQuietMode
-      ? "visible"
-      : "hidden") as React.CSSProperties["visibility"],
     opacity: showQuietMode ? 1 : 0,
-    transition: "visibility 0s, opacity 0.5s",
+    transition: "opacity 0.5s ease-in-out",
+    pointerEvents: (showQuietMode
+      ? "auto"
+      : "none") as React.CSSProperties["pointerEvents"],
   };
   return (
     <div style={visibilityStyles}>
