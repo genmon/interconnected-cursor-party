@@ -1,4 +1,5 @@
 import * as React from "react";
+import { usePresence } from "./presence-context";
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -83,34 +84,69 @@ export default function QuietMode({
   quietMode: boolean;
   setQuietMode: (quietMode: boolean) => void;
 }) {
+  // We want to know whether it's busy
+  const { isBusy } = usePresence((state) => {
+    let isBusy = false;
+    // Go through state.otherUsers.message and set isBlue to true if any of them have a non-null, non-empty message
+    const otherUsers = Array.from(state.otherUsers.values());
+    let showCTA = false;
+    for (const user of otherUsers) {
+      if (user.presence?.message) {
+        isBusy = true;
+        break;
+      }
+    }
+
+    // Also show isBusy if there are > 10 users
+    if (state.otherUsers.size > 10) {
+      isBusy = true;
+    }
+
+    return {
+      isBusy,
+    };
+  });
+
   const handleToggle = () => {
     setQuietMode(!quietMode);
   };
 
+  // show quietMode EITHER if it's busy, or if quiet mode is already on
+  // The quietMode button should have a nice transition between the two visibility modes
+  const showQuietMode = quietMode || isBusy;
+  const visibilityStyles = {
+    visibility: (showQuietMode
+      ? "visible"
+      : "hidden") as React.CSSProperties["visibility"],
+    opacity: showQuietMode ? 1 : 0,
+    transition: "visibility 0s, opacity 0.5s",
+  };
   return (
-    <div style={styles.container}>
-      <label style={styles.label}>
-        <span style={styles.text}>Quiet mode</span>
-        <input
-          type="checkbox"
-          checked={quietMode}
-          onChange={handleToggle}
-          style={styles.checkbox}
-        />
-        <div
-          style={{
-            ...styles.toggleContainer,
-            ...(quietMode ? styles.toggleContainerChecked : {}),
-          }}
-        >
+    <div style={visibilityStyles}>
+      <div style={styles.container}>
+        <label style={styles.label}>
+          <span style={styles.text}>Quiet mode</span>
+          <input
+            type="checkbox"
+            checked={quietMode}
+            onChange={handleToggle}
+            style={styles.checkbox}
+          />
           <div
             style={{
-              ...styles.toggleHandle,
-              ...(quietMode ? styles.toggleHandleChecked : {}),
+              ...styles.toggleContainer,
+              ...(quietMode ? styles.toggleContainerChecked : {}),
             }}
-          />
-        </div>
-      </label>
+          >
+            <div
+              style={{
+                ...styles.toggleHandle,
+                ...(quietMode ? styles.toggleHandleChecked : {}),
+              }}
+            />
+          </div>
+        </label>
+      </div>
     </div>
   );
 }
