@@ -5,9 +5,6 @@ import { usePresence } from "./presence-context";
 const styles: Record<string, React.CSSProperties> = {
   container: {
     boxSizing: "border-box",
-    position: "fixed",
-    bottom: "24px",
-    right: "32px",
     padding: "8px",
     height: "48px",
     borderRadius: "24px",
@@ -21,6 +18,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily:
       'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
     fontWeight: 320,
+  },
+  dockedContainer: {
+    position: "fixed",
+    bottom: "24px",
+    right: "32px",
   },
   input: {
     boxSizing: "border-box",
@@ -68,6 +70,60 @@ export default function Chat() {
       showCTA,
     };
   });
+
+  // Track window size and cursor position independently of the useCursorPresent functionality
+  const [windowDimensions, setWindowDimensions] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        x: window.innerWidth,
+        y: window.innerHeight,
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Track the cursor position
+  const [cursorPosition, setCursorPosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: -1, y: -1 });
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      setCursorPosition({ x: event.clientX, y: event.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  // We'll be updating the container styles with the cursor positons
+  const [containerStyles, setContainerStyles] = useState<React.CSSProperties>({
+    ...styles.container,
+    ...styles.dockedContainer,
+  });
+  useEffect(() => {
+    if (cursorPosition.x === -1 || cursorPosition.y === -1) {
+      setContainerStyles({
+        ...styles.container,
+        ...styles.dockedContainer,
+      });
+    } else {
+      const top = cursorPosition.y + 8;
+      const left = cursorPosition.x + 8;
+      setContainerStyles({
+        ...styles.container,
+        position: "fixed",
+        top: 0,
+        left: 0,
+        transform: `translate(${left}px, ${top}px)`,
+      });
+    }
+  }, [cursorPosition, windowDimensions]);
 
   // Create an event listener for the keyboard, with these rules
   // - if not listening and the user types '/' then start listening
@@ -131,7 +187,7 @@ export default function Chat() {
 
   if (listening || message) {
     return (
-      <div style={styles.container}>
+      <div style={containerStyles}>
         <div style={styles.input}>{message ? message : "..."}</div>
         <div
           style={styles.button}
@@ -146,7 +202,7 @@ export default function Chat() {
     );
   } else if (showCTA) {
     return (
-      <div style={styles.container}>
+      <div style={containerStyles}>
         <div style={styles.input}>Type / to reply</div>
       </div>
     );
