@@ -1,3 +1,4 @@
+/* eslint-disable @hasparus/tailwindcss/no-custom-classname */
 import * as React from "react";
 import countryCodeEmoji from "./country-code-emoji";
 import type { User } from "./presence-schema";
@@ -39,6 +40,7 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
 
   return (
     <div
+      className="presence-cursor presence-cursor-other"
       style={{
         position: "absolute",
         transform: `translate(${cursor.x - offset}px, ${cursor.y - offset}px`,
@@ -52,6 +54,7 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
       )}
       {cursor.message === null && cursor.country !== null && (
         <div
+          className="presence-cursor-flag"
           style={{
             position: "absolute",
             whiteSpace: "nowrap",
@@ -66,15 +69,12 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
       )}
       {cursor.message !== null && (
         <div
+          className="presence-cursor presence-cursor-chat"
           style={{
             position: "absolute",
-            fontSize: "16px",
-            fontStyle: "normal",
             color: "white",
-            padding: "4px 9px 4px 9px",
-            borderRadius: "16px 16px 16px 16px",
-            whiteSpace: "nowrap",
             backgroundColor: fill,
+            ...{ "--color": fill },
             top: "17px",
             left: "22px",
           }}

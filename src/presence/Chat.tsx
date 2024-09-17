@@ -1,3 +1,4 @@
+/* eslint-disable @hasparus/tailwindcss/no-custom-classname */
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { usePresence } from "./presence-context";
@@ -139,29 +140,25 @@ export default function Chat() {
   if (listening || message) {
     return (
       <div
-        className="px-2 py-1 h-9 rounded-full min-w-[3.6em] text-white flex justify-end items-center gap-1"
+        className="presence-cursor presence-cursor-chat"
         style={{
           ...containerStyles,
-          background: color,
+          ...{ "--color": color },
         }}
       >
-        <div className="text-lg leading-none whitespace-nowrap">
-          {message ? message : "..."}
-        </div>
+        {message ? message : "..."}
       </div>
     );
   } else if (showCTA) {
     return (
       <div
-        className="px-2 py-1 h-9 rounded-full min-w-[3.6em] text-white flex justify-end items-center gap-1"
+        className="presence-cursor presence-cursor-cta"
         style={{
           ...containerStyles,
-          background: color,
+          ...{ "--color": color },
         }}
       >
-        <div className="text-lg leading-none whitespace-nowrap">
-          Type / to reply
-        </div>
+        Type / to reply
       </div>
     );
   }
