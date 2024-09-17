@@ -140,7 +140,7 @@ export default function Chat() {
   if (listening || message) {
     return (
       <div
-        className="presence-cursor presence-cursor-chat"
+        className="presence-cursor presence-cursor-own presence-cursor-chat"
         style={{
           ...containerStyles,
           ...{ "--color": color },
@@ -152,7 +152,7 @@ export default function Chat() {
   } else if (showCTA) {
     return (
       <div
-        className="presence-cursor presence-cursor-cta"
+        className="presence-cursor presence-cursor-own presence-cursor-cta"
         style={{
           ...containerStyles,
           ...{ "--color": color },
