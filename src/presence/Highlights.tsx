@@ -37,8 +37,8 @@ export default function Highlights() {
   }, []);
 
   useEffect(() => {
-    //console.log("selection changed", selection);
     updatePresence({ selection });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selection]);
 
   return (

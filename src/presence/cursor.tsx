@@ -7,16 +7,13 @@ import { usePresenceWithCursors } from "./use-cursors";
 // The pointer SVG is from https://github.com/daviddarnes/mac-cursors
 // The license is the Apple User Agreement
 
-export default function Cursor(props: {
-  userId: string;
-  fill: string;
-  showChat: boolean;
-}) {
+export default function Cursor(props: { userId: string; showChat: boolean }) {
   const user: User | null = usePresenceWithCursors(
     (state) => state.otherUsers.get(props.userId) || null
   );
   if (!user?.presence?.cursor) return;
 
+  const fill = user.presence.color;
   const cursor = {
     x: user.presence.cursor.x,
     y: user.presence.cursor.y,
@@ -36,7 +33,6 @@ export default function Cursor(props: {
           zIndex: 1001,
         }
       : {
-          filter: "blur(1px)",
           opacity: 0.7,
           zIndex: -1,
         };
@@ -50,9 +46,9 @@ export default function Cursor(props: {
       }}
     >
       {cursor.pointer === "mouse" ? (
-        <MousePointer fill={props.fill} />
+        <MousePointer fill={fill} />
       ) : (
-        <TouchPointer fill={props.fill} />
+        <TouchPointer fill={fill} />
       )}
       {cursor.message === null && cursor.country !== null && (
         <div
@@ -74,13 +70,11 @@ export default function Cursor(props: {
             position: "absolute",
             fontSize: "16px",
             fontStyle: "normal",
-            fontFamily:
-              'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
             color: "white",
             padding: "4px 9px 4px 9px",
             borderRadius: "16px 16px 16px 16px",
             whiteSpace: "nowrap",
-            backgroundColor: "rgba(52,199,89,1)", // or props.fill,
+            backgroundColor: fill,
             top: "17px",
             left: "22px",
           }}

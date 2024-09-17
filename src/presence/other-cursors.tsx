@@ -32,9 +32,7 @@ export default function OtherCursors({
   return (
     <div style={style}>
       {otherUserIds.map((id) => {
-        return (
-          <Cursor key={id} userId={id} fill={"#00f"} showChat={showChat} />
-        );
+        return <Cursor key={id} userId={id} showChat={showChat} />;
       })}
     </div>
   );
