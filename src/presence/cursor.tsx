@@ -75,7 +75,6 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
           style={{
             backgroundColor: "var(--fill, var(--color))",
             position: "absolute",
-            color: "white",
             top: "17px",
             left: "22px",
           }}
