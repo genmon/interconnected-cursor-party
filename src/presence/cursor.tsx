@@ -29,7 +29,7 @@ export default function Cursor(props: {
   const flag = cursor.country ? `${countryCodeEmoji(cursor.country)} ` : "";
 
   // Optional: show ghosted cursors unless the user is chatting
-  /*const styles =
+  const styles =
     !props.showChat || cursor.message !== null
       ? {
           opacity: 1.0,
@@ -39,11 +39,7 @@ export default function Cursor(props: {
           filter: "blur(1px)",
           opacity: 0.7,
           zIndex: -1,
-        };*/
-  const styles = {
-    opacity: 1.0,
-    zIndex: 1001,
-  };
+        };
 
   return (
     <div

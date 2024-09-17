@@ -133,15 +133,6 @@ export default function Chat() {
     return (
       <div style={styles.container}>
         <div style={styles.input}>{message ? message : "..."}</div>
-        <div
-          style={styles.button}
-          onClick={() => {
-            setListening(false);
-            setMessage("");
-          }}
-        >
-          &times;
-        </div>
       </div>
     );
   } else if (showCTA) {
