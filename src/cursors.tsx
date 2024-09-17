@@ -5,6 +5,37 @@ import Cursors from "./presence/Cursors";
 
 declare const PARTYKIT_HOST: string;
 
+const rainbow24 = [
+  "#FF0000",
+  "#FF4000",
+  "#FF8000",
+  "#FFC000",
+  "#FFFF00",
+  "#C0FF00",
+  "#80FF00",
+  "#40FF00",
+  "#00FF00",
+  "#00FF40",
+  "#00FF80",
+  "#00FFC0",
+  "#00FFFF",
+  "#00C0FF",
+  "#0080FF",
+  "#0040FF",
+  "#0000FF",
+  "#4000FF",
+  "#8000FF",
+  "#C000FF",
+  "#FF00FF",
+  "#FF00C0",
+  "#FF0080",
+  "#FF0040",
+];
+
+const chooseRandom = (arr: string[]) => {
+  return arr[Math.floor(Math.random() * arr.length)];
+};
+
 const pageId = window?.location.href
   ? btoa(window.location.href.split(/[?#]/)[0])
   : "default";
@@ -14,10 +45,7 @@ function App() {
     <PresenceProvider
       host={PARTYKIT_HOST}
       room={pageId}
-      presence={{
-        name: "Anonymous User",
-        color: "#0000f0",
-      }}
+      presence={{ name: "Anonymous User", color: chooseRandom(rainbow24) }}
     >
       <Cursors />
     </PresenceProvider>
