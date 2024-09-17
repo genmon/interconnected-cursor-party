@@ -35,6 +35,8 @@ cursorsRoot.classList.add("cursors-root");
 // rangy has it's own weird module system, that
 // waits for the DOM to be ready before loading
 // so we need to wait for that before rendering our app
+const root = createRoot(cursorsRoot);
+root.render(<App />);
 document.addEventListener("DOMContentLoaded", () => {
-  createRoot(cursorsRoot).render(<App />);
+  root.render(<App />);
 });

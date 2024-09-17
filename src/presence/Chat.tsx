@@ -2,54 +2,6 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { usePresence } from "./presence-context";
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    boxSizing: "border-box",
-    padding: "8px",
-    height: "48px",
-    borderRadius: "24px",
-    minWidth: "4.4em",
-    color: "white",
-    display: "flex",
-    justifyContent: "end",
-    alignItems: "center",
-    gap: "8px",
-    fontFamily:
-      'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
-    fontWeight: 320,
-  },
-  dockedContainer: {
-    position: "fixed",
-    bottom: "24px",
-    right: "32px",
-  },
-  input: {
-    boxSizing: "border-box",
-    padding: "0px 4px 0px 4px",
-    margin: "0px",
-    fontSize: "24px",
-    lineHeight: 1,
-    whiteSpace: "nowrap",
-  },
-  button: {
-    boxSizing: "border-box",
-    width: "32px",
-    height: "32px",
-    borderRadius: "50%",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontSize: "24px",
-    fontWeight: 250,
-    padding: "0px",
-    margin: "0px",
-    border: "0.5px solid rgba(255,255,255,0.75)",
-    cursor: "pointer",
-    color: "white",
-    backgroundColor: "transparent",
-  },
-};
-
 export default function Chat() {
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState<string>("");
@@ -101,22 +53,21 @@ export default function Chat() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // We'll be updating the container styles with the cursor positons
-  const [containerStyles, setContainerStyles] = useState<React.CSSProperties>({
-    ...styles.container,
-    ...styles.dockedContainer,
-  });
+  // We'll be updating the container styles with the cursor positions
+  const [containerStyles, setContainerStyles] = useState<React.CSSProperties>(
+    {}
+  );
   useEffect(() => {
     if (cursorPosition.x === -1 || cursorPosition.y === -1) {
       setContainerStyles({
-        ...styles.container,
-        ...styles.dockedContainer,
+        position: "fixed",
+        bottom: "16px",
+        right: "24px",
       });
     } else {
       const top = cursorPosition.y + 8;
       const left = cursorPosition.x + 8;
       setContainerStyles({
-        ...styles.container,
         position: "fixed",
         top: 0,
         left: 0,
@@ -188,23 +139,29 @@ export default function Chat() {
   if (listening || message) {
     return (
       <div
+        className="px-2 py-1 h-9 rounded-full min-w-[3.6em] text-white flex justify-end items-center gap-1"
         style={{
           ...containerStyles,
           background: color,
         }}
       >
-        <div style={styles.input}>{message ? message : "..."}</div>
+        <div className="text-lg leading-none whitespace-nowrap">
+          {message ? message : "..."}
+        </div>
       </div>
     );
   } else if (showCTA) {
     return (
       <div
+        className="px-2 py-1 h-9 rounded-full min-w-[3.6em] text-white flex justify-end items-center gap-1"
         style={{
           ...containerStyles,
           background: color,
         }}
       >
-        <div style={styles.input}>Type / to reply</div>
+        <div className="text-lg leading-none whitespace-nowrap">
+          Type / to reply
+        </div>
       </div>
     );
   }
