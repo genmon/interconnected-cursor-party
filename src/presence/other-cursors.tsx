@@ -4,8 +4,10 @@ import { usePresenceWithCursors } from "./use-cursors";
 
 export default function OtherCursors({
   showChat = false,
+  quietMode = false,
 }: {
   showChat: boolean;
+  quietMode: boolean;
 }) {
   const otherUserIds = usePresenceWithCursors((state) =>
     Array.from(state.otherUsers.keys())
@@ -22,6 +24,9 @@ export default function OtherCursors({
     bottom: 0,
     overflow: "clip",
     pointerEvents: "none" as React.CSSProperties["pointerEvents"],
+    visibility: (quietMode
+      ? "hidden"
+      : "visible") as React.CSSProperties["visibility"],
   };
 
   return (

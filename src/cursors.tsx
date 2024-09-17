@@ -1,5 +1,5 @@
 import * as React from "react";
-import { render } from "react-dom";
+import { createRoot } from "react-dom/client";
 import PresenceProvider from "./presence/presence-context";
 import Cursors from "./presence/Cursors";
 
@@ -32,4 +32,9 @@ document.documentElement.style.minHeight = "100dvh";
 // add a classname
 cursorsRoot.classList.add("cursors-root");
 
-render(<App />, cursorsRoot);
+// rangy has it's own weird module system, that
+// waits for the DOM to be ready before loading
+// so we need to wait for that before rendering our app
+document.addEventListener("DOMContentLoaded", () => {
+  createRoot(cursorsRoot).render(<App />);
+});

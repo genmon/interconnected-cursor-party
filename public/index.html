@@ -23,7 +23,7 @@
   </head>
   <body>
     <main>
-      <section id="promo">
+      <section id="promo" data-highlights>
         <h1>
           <img src="/PartyKit.png" id="logo" />
           <div>Cursor Party</div>
@@ -93,6 +93,12 @@
             >read the docs</a
           >.
         </p>
+        <h2>Multiplayer highlights</h2>
+        <p>Add a <code>data-highlights</code> attribute to the container elements in which you want to highlight shared selections.</p>
+        <p>Then, to your CSS, add the following lines:</p>
+        <pre><code>::highlight(highlight-party) {
+  background: rgba(52,199,89,0.3);
+}</code></pre>
       </section>
     </main>
     <script src="/cursors.js"></script>

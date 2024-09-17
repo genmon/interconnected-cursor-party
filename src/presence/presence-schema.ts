@@ -14,6 +14,7 @@ export type Presence = {
   cursor?: Cursor | null;
   message?: string | null;
   spotlightColor?: string;
+  selection?: string | null;
 };
 
 // set on the server, read-only for the duration of the session
@@ -60,6 +61,7 @@ export const presenceSchema = z.object({
   cursor: cursorSchema.optional().nullable(),
   message: z.string().optional().nullable(),
   spotlightColor: z.string().optional(),
+  selection: z.string().optional().nullable(),
 });
 
 export const metadataSchema = z.object({
@@ -71,7 +73,7 @@ export const userSchema = z.object({
   metadata: metadataSchema,
 });
 
-export const partyMessageSchema = z.discriminatedUnion("type", [
+export const partyMessageSchema = z.union([
   z.object({
     type: z.literal("sync"),
     users: z.record(userSchema),

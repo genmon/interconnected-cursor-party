@@ -3,6 +3,10 @@
   color: #252525;
 }
 
+::highlight(highlight-party) {
+  background: rgba(52,199,89,0.3);
+}
+
 body {
   min-height: 100dvh;
   font-family: -apple-system,
