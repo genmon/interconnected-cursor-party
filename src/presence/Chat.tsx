@@ -9,7 +9,6 @@ const styles: Record<string, React.CSSProperties> = {
     height: "48px",
     borderRadius: "24px",
     minWidth: "4.4em",
-    backgroundColor: "rgba(52, 199, 89, 1)",
     color: "white",
     display: "flex",
     justifyContent: "end",
@@ -54,6 +53,7 @@ const styles: Record<string, React.CSSProperties> = {
 export default function Chat() {
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState<string>("");
+  const color = usePresence((state) => state.myself?.presence.color);
   const { updatePresence, showCTA } = usePresence((state) => {
     // Go through state.otherUsers.message and set showCTA to true if any of them have a non-null, non-empty message
     const otherUsers = Array.from(state.otherUsers.values());
@@ -187,13 +187,23 @@ export default function Chat() {
 
   if (listening || message) {
     return (
-      <div style={containerStyles}>
+      <div
+        style={{
+          ...containerStyles,
+          background: color,
+        }}
+      >
         <div style={styles.input}>{message ? message : "..."}</div>
       </div>
     );
   } else if (showCTA) {
     return (
-      <div style={containerStyles}>
+      <div
+        style={{
+          ...containerStyles,
+          background: color,
+        }}
+      >
         <div style={styles.input}>Type / to reply</div>
       </div>
     );

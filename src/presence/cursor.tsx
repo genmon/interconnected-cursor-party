@@ -34,7 +34,7 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
         }
       : {
           opacity: 0.7,
-          zIndex: -1,
+          zIndex: 1,
         };
 
   return (
