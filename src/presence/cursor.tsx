@@ -14,7 +14,7 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
   );
   if (!user?.presence?.cursor) return;
 
-  const fill = user.presence.color;
+  const color = user.presence.color;
   const cursor = {
     x: user.presence.cursor.x,
     y: user.presence.cursor.y,
@@ -34,23 +34,25 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
           zIndex: 1001,
         }
       : {
+          filter: "blur(1px)",
           opacity: 0.7,
-          zIndex: 1,
+          zIndex: -1,
         };
 
   return (
     <div
       className="presence-cursor presence-cursor-other"
       style={{
+        ...{ "--color": color },
         position: "absolute",
         transform: `translate(${cursor.x - offset}px, ${cursor.y - offset}px`,
         ...styles,
       }}
     >
       {cursor.pointer === "mouse" ? (
-        <MousePointer fill={fill} />
+        <MousePointer fill="var(--fill, var(--color))" />
       ) : (
-        <TouchPointer fill={fill} />
+        <TouchPointer fill="var(--fill, var(--color))" />
       )}
       {cursor.message === null && cursor.country !== null && (
         <div
@@ -71,10 +73,9 @@ export default function Cursor(props: { userId: string; showChat: boolean }) {
         <div
           className="presence-cursor presence-cursor-chat"
           style={{
+            backgroundColor: "var(--fill, var(--color))",
             position: "absolute",
             color: "white",
-            backgroundColor: fill,
-            ...{ "--color": fill },
             top: "17px",
             left: "22px",
           }}
