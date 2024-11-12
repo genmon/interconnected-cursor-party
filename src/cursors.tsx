@@ -32,4 +32,9 @@ document.documentElement.style.minHeight = "100dvh";
 // add a classname
 cursorsRoot.classList.add("cursors-root");
 
-render(<App />, cursorsRoot);
+// rangy has it's own weird module system, that
+// waits for the DOM to be ready before loading
+// so we need to wait for that before rendering our app
+document.addEventListener("DOMContentLoaded", () => {
+  render(<App />, cursorsRoot);
+});
