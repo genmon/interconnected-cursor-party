@@ -15,6 +15,7 @@
     "@types/rangy": "^0.0.38",
     "partyserver": "^0.0.75",
     "partysocket": "0.0.17",
+    "zod": "^3.25.76",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
@@ -23,7 +24,6 @@
     "@types/react-dom": "^18.2.17",
     "dotenv": "^16.3.1",
     "esbuild": "^0.27.1",
-    "partykit": "^0.0.0-1dfa367",
     "typescript": "^5.3.3",
     "wrangler": "^4.54.0"
   }
