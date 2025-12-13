@@ -168,6 +168,8 @@ dist
 
 .partykit
 .DS_Store
+.wrangler/
+.dev.vars
 
 public/cursors.js
 public/cursors.js.map

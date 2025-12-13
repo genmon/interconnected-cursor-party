@@ -199,23 +199,25 @@ Since PartyServer doesn't have built-in bundling, we need an external build setu
 
 ## Open Questions to Resolve
 
-1. **PARTYKIT_HOST definition**:
-   - Currently defined by PartyKit's bundler automatically
-   - Need to determine how to set this in the new build process
-   - May need to be different for dev vs. production
+1. **✅ PARTYKIT_HOST definition** (RESOLVED):
+   - Solution: Use `window.location.host` in dev mode for auto-detection
+   - In production, optionally set `PARTYKIT_HOST` env var during build
+   - Default behavior works for both dev and production
 
-2. **Splash script integration**:
-   - Currently runs via `partykit.json` build.command
-   - Where should this run in the new setup?
+2. **✅ Splash script integration** (RESOLVED):
+   - Integrated into `scripts/build-client.mjs`
+   - Runs automatically before bundling the client
+   - Generates `public/meta.js` with WEBSITES configuration
 
-3. **URL routing pattern**:
+3. **✅ URL routing pattern** (RESOLVED):
    - PartyKit uses `/:party/:room` pattern
-   - PartyServer's `routePartykitRequest` uses `/:server/:name`
-   - Verify client needs to be updated or if it's transparent
+   - PartyServer's `routePartykitRequest` uses `/parties/:server/:name`
+   - Solution: Set `party: "presence-server"` in client (matches kebab-cased binding name)
 
-4. **Durable Object naming**:
-   - Need to decide on binding name in wrangler.toml
-   - `routePartykitRequest` converts to kebab-case (PresenceServer → presence-server)
+4. **✅ Durable Object naming** (RESOLVED):
+   - Binding name: `PRESENCE_SERVER` in wrangler.toml
+   - Class name: `PresenceServer`
+   - URL path: `presence-server` (auto-converted to kebab-case)
 
 5. **Cost implications**:
    - Understand Cloudflare Workers pricing vs. PartyKit

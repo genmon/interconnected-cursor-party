@@ -1,0 +1,9 @@
+# Local development environment variables
+# Copy this file to .dev.vars and customize for your setup
+
+# Website allowlist - JSON array of URL patterns (using URLPattern API)
+# Allows localhost and any sites you want to test with
+WEBSITES=["http://localhost:*/*", "http://127.0.0.1:*/*", "https://your-website.com/*"]
+
+# Note: PARTYKIT_HOST is automatically set to window.location.host in dev mode
+# so you don't need to set it here

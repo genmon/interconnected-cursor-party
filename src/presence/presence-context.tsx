@@ -195,7 +195,7 @@ export default function PresenceProvider(props: {
 
   const socket = usePartySocket({
     host: props.host,
-    // party: "presence",
+    party: "presence-server",
     room: props.room,
     // Initial presence is sent in the query string
     query: {

@@ -4,7 +4,14 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:developers.cloudflare.com)",
-      "WebFetch(domain:docs.partykit.io)"
+      "WebFetch(domain:docs.partykit.io)",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 8 npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(npm run build:client:*)",
+      "Bash(NODE_ENV=production npm run build:client:*)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import type * as Party from "partykit/server";
+import { Server, type Connection, type ConnectionContext } from "partyserver";
 import type {
   Metadata,
   Presence,
@@ -12,7 +12,7 @@ import {
   encodePartyMessage,
 } from "./presence/presence-schema";
 
-export type ConnectionWithUser = Party.Connection<{
+export type ConnectionWithUser = Connection<{
   metadata?: Metadata;
   presence?: Presence;
 }>;
@@ -27,9 +27,8 @@ const CORS = {
 };
 
 // server.ts
-export default class PresenceServer implements Party.Server {
-  constructor(public party: Party.Party) {}
-  options: Party.ServerOptions = {
+export default class PresenceServer extends Server {
+  static options = {
     hibernate: true,
   };
 
@@ -41,65 +40,11 @@ export default class PresenceServer implements Party.Server {
   lastBroadcast = 0;
   interval: ReturnType<typeof setInterval> | null = null;
 
-  static onBeforeConnect(req: Party.Request, lobby: Party.Lobby) {
-    // we assume that the request url is encoded into the request query param
-    const encodedHomeURL = new URL(req.url).searchParams.get("from");
-
-    if (!encodedHomeURL) {
-      return new Response("Not Allowed", { status: 403 });
-    }
-
-    const homeURL = new URL(decodeURIComponent(encodedHomeURL));
-
-    const WEBSITES = JSON.parse(
-      (lobby.env.WEBSITES || "[]") as string
-    ) as string[];
-
-    if (["localhost", "127.0.0.1", "0.0.0.0"].includes(homeURL.hostname)) {
-      return req;
-    }
-
-    const matchWith = homeURL.origin + homeURL.pathname;
-
-    const patterns = WEBSITES.map((site) => {
-      try {
-        // @ts-expect-error - URLPattern is not in the TS lib
-        return new URLPattern(site);
-      } catch (e) {
-        console.log(
-          `
-
-⚠️  Invalid URL pattern "${site}" in .env -> WEBSITES. 
-It should be a valid input to new URLPattern(). 
-Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
-
-`
-        );
-        throw e;
-      }
-    });
-
-    const allowed = patterns.some((pattern) => pattern.test(matchWith));
-    if (!allowed) {
-      const errMessage = `The URL ${matchWith} does not match any allowed pattern from ${lobby.env.WEBSITES}`;
-      // @ts-expect-error we're using dom types here. apparently
-      const pair = new WebSocketPair();
-      pair[1].accept();
-      pair[1].close(1011, errMessage || "Uncaught exception when connecting");
-      return new Response(null, {
-        status: 101,
-        // @ts-expect-error we're using dom types here. apparently
-        webSocket: pair[0],
-      });
-    }
-
-    return req;
-  }
-
   onConnect(
-    connection: Party.Connection,
-    { request }: Party.ConnectionContext
+    connection: Connection,
+    ctx: ConnectionContext
   ): void | Promise<void> {
+    const request = ctx.request;
     const metadata = { country: request.cf?.country ?? null } as Metadata;
 
     // The client may set name and color (from the presence object) in the query string
@@ -143,7 +88,7 @@ Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
   makeSyncMessage() {
     // Build users list
     const users = <Record<string, User>>{};
-    for (const connection of this.party.getConnections()) {
+    for (const connection of this.getConnections()) {
       const user = this.getUser(connection);
       users[connection.id] = user;
     }
@@ -170,53 +115,65 @@ Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
 
   leave(connection: ConnectionWithUser) {
     this.enqueueRemove(connection.id);
-    this.broadcast().catch((err) => {
+    this.scheduleBroadcast().catch((err) => {
       console.error(err);
     });
   }
 
   onMessage(
-    msg: string | ArrayBufferLike,
-    connection: ConnectionWithUser
+    connection: ConnectionWithUser,
+    message: string | ArrayBuffer | ArrayBufferView
   ): void | Promise<void> {
     //const message = JSON.parse(msg as string) as ClientMessage;
-    const result = clientMessageSchema.safeParse(decodeMessage(msg));
+    // Convert ArrayBufferView to ArrayBuffer if needed
+    const messageData =
+      message instanceof ArrayBuffer
+        ? message
+        : typeof message === "string"
+          ? message
+          : message.buffer;
+    const result = clientMessageSchema.safeParse(decodeMessage(messageData));
     if (!result.success) return;
-    const message = result.data;
+    const parsedMessage = result.data;
     /*console.log(
       "onMessage",
-      this.party.id,
+      this.name,
       connection.id,
-      JSON.stringify(message, null, 2)
+      JSON.stringify(parsedMessage, null, 2)
     );*/
-    switch (message.type) {
+    switch (parsedMessage.type) {
       case "update": {
         // A presence update, replacing the existing presence
         connection.setState((prevState) => {
-          this.enqueuePresence(connection.id, message.presence);
+          this.enqueuePresence(connection.id, parsedMessage.presence);
           return {
             ...prevState,
-            presence: message.presence,
+            presence: parsedMessage.presence,
           };
         });
         break;
       }
     }
 
-    this.broadcast().catch((err) => {
+    this.scheduleBroadcast().catch((err) => {
       console.error(err);
     });
   }
 
-  onClose(connection: ConnectionWithUser) {
+  onClose(
+    connection: ConnectionWithUser,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ) {
     this.leave(connection);
   }
 
-  onError(connection: ConnectionWithUser) {
+  onError(connection: ConnectionWithUser, error: unknown) {
     this.leave(connection);
   }
 
-  async broadcast() {
+  async scheduleBroadcast() {
     // Broadcasts deltas. Looks at lastBroadcast
     // - If it's longer ago than BROADCAST_INTERVAL, broadcasts immediately
     // - If it's less than BROADCAST_INTERVAL ago, schedules an alarm
@@ -243,7 +200,7 @@ Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
 
     // Avoid the situation where there's only one connection and we're
     // rebroadcasting its own deltas to it
-    const connections = [...this.party.getConnections()];
+    const connections = [...this.getConnections()];
     const presenceUniqueIds = new Set(Object.keys(this.presence));
     if (
       connections.length === 1 &&
@@ -262,17 +219,18 @@ Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
       presence: this.presence,
       remove: this.remove,
     } satisfies PartyMessage;
-    //this.party.broadcast(JSON.stringify(update));
-    this.party.broadcast(encodePartyMessage(update));
+    //this.broadcast(JSON.stringify(update));
+    const encoded = encodePartyMessage(update);
+    this.broadcast(encoded);
     this.add = {};
     this.presence = {};
     this.remove = [];
   }
 
-  async onRequest(req: Party.Request) {
+  async onRequest(req: Request) {
     if (req.method === "GET") {
       // For SSR, return the current presence of all connections
-      const users = [...this.party.getConnections()].reduce(
+      const users = [...this.getConnections()].reduce(
         (acc, user) => ({ ...acc, [user.id]: this.getUser(user) }),
         {}
       );
@@ -287,5 +245,3 @@ Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
     return new Response("Method Not Allowed", { status: 405 });
   }
 }
-
-PresenceServer satisfies Party.Worker;

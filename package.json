@@ -3,21 +3,28 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "partykit dev",
-    "deploy": "partykit deploy --with-vars"
+    "build:client": "node scripts/build-client.mjs",
+    "build": "npm run build:client",
+    "dev": "npm run build:client && wrangler dev",
+    "deploy": "NODE_ENV=production npm run build:client && wrangler deploy",
+    "preview": "npm run build:client && wrangler dev --remote"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.0.0-beta2",
     "@preact/compat": "^17.1.2",
     "@types/rangy": "^0.0.38",
+    "partyserver": "^0.0.75",
     "partysocket": "0.0.17",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251213.0",
     "@types/react": "^18.2.42",
     "@types/react-dom": "^18.2.17",
     "dotenv": "^16.3.1",
+    "esbuild": "^0.27.1",
     "partykit": "^0.0.0-1dfa367",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wrangler": "^4.54.0"
   }
 }
