@@ -85,11 +85,10 @@ export default function QuietMode({
   setQuietMode: (quietMode: boolean) => void;
 }) {
   // We want to know whether it's busy
-  const { isBusy } = usePresence((state) => {
+  const { isBusy, otherUsersCount } = usePresence((state) => {
     let isBusy = false;
     // Go through state.otherUsers.message and set isBlue to true if any of them have a non-null, non-empty message
     const otherUsers = Array.from(state.otherUsers.values());
-    let showCTA = false;
     for (const user of otherUsers) {
       if (user.presence?.message) {
         isBusy = true;
@@ -104,8 +103,18 @@ export default function QuietMode({
 
     return {
       isBusy,
+      otherUsersCount: state.otherUsers.size,
     };
   });
+
+  // Auto-enable quiet mode if the user joins a busy room (20+ others)
+  const hasAutoEnabled = React.useRef(false);
+  React.useEffect(() => {
+    if (!hasAutoEnabled.current && !quietMode && isBusy && otherUsersCount >= 20) {
+      hasAutoEnabled.current = true;
+      setQuietMode(true);
+    }
+  }, [otherUsersCount]);
 
   const handleToggle = () => {
     setQuietMode(!quietMode);
