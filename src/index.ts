@@ -87,7 +87,7 @@ export default {
       }
 
       // Forward to the Agent instance
-      const agent = await getAgentByName<PresenceServer>(
+      const agent = await getAgentByName<Env, PresenceServer>(
         env.PRESENCE_SERVER,
         roomId
       );

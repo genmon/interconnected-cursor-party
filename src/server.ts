@@ -175,8 +175,12 @@ export default class PresenceServer extends Agent<Env> {
     this.leave(connection);
   }
 
-  onError(connection: ConnectionWithUser, error: unknown) {
-    this.leave(connection);
+  onError(connection: Connection, error: unknown): void;
+  onError(error: unknown): void;
+  onError(connectionOrError: Connection | unknown, error?: unknown) {
+    if (connectionOrError instanceof Object && "id" in (connectionOrError as Connection)) {
+      this.leave(connectionOrError as ConnectionWithUser);
+    }
   }
 
   async scheduleBroadcast() {
