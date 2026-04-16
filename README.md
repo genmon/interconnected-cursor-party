@@ -68,7 +68,7 @@ For local development, create `.dev.vars`:
 WEBSITES=["http://localhost:*/*", "https://your-website.com/*", "https://(www.)?example.org/*"]
 ```
 
-For production, set the environment variable in `wrangler.toml` or use:
+For production, set the environment variable in `wrangler.jsonc` or use:
 
 ```bash
 wrangler secret put WEBSITES
