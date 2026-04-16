@@ -1,12 +1,15 @@
 import { getAgentByName } from "agents";
 import PresenceServer from "./server";
+import DashboardServer from "./dashboard";
+import { DASHBOARD_SINGLETON } from "./dashboard";
 
 // Export the Durable Object class
-export { PresenceServer };
+export { PresenceServer, DashboardServer };
 
 // Define the Env interface for TypeScript
 export interface Env extends Record<string, unknown> {
   PRESENCE_SERVER: DurableObjectNamespace<PresenceServer>;
+  DASHBOARD_SERVER: DurableObjectNamespace<DashboardServer>;
   WEBSITES: string;
   ASSETS: Fetcher;
 }
@@ -92,6 +95,15 @@ export default {
         roomId
       );
       return agent.fetch(request);
+    }
+
+    // Dashboard route
+    if (url.pathname === "/dashboard" || url.pathname.startsWith("/dashboard/")) {
+      const dashboard = await getAgentByName<Env, DashboardServer>(
+        env.DASHBOARD_SERVER,
+        DASHBOARD_SINGLETON
+      );
+      return dashboard.fetch(request);
     }
 
     // Non-party requests: fall through to static assets

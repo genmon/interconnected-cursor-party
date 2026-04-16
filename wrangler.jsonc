@@ -12,6 +12,11 @@
         "name": "PRESENCE_SERVER",
         "class_name": "PresenceServer",
         "script_name": "cursor-party"
+      },
+      {
+        "name": "DASHBOARD_SERVER",
+        "class_name": "DashboardServer",
+        "script_name": "cursor-party"
       }
     ]
   },
@@ -21,6 +26,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["PresenceServer"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["DashboardServer"]
     }
   ],
 
