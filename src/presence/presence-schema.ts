@@ -76,12 +76,12 @@ export const userSchema = z.object({
 export const partyMessageSchema = z.union([
   z.object({
     type: z.literal("sync"),
-    users: z.record(userSchema),
+    users: z.record(z.string(), userSchema),
   }),
   z.object({
     type: z.literal("changes"),
-    add: z.record(userSchema).optional(),
-    presence: z.record(presenceSchema).optional(),
+    add: z.record(z.string(), userSchema).optional(),
+    presence: z.record(z.string(), presenceSchema).optional(),
     remove: z.array(z.string()).optional(),
   }),
 ]);
