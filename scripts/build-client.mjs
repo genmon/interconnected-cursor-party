@@ -1,9 +1,8 @@
 import * as esbuild from "esbuild";
 import * as dotenv from "dotenv";
 import * as fs from "fs";
-import * as path from "path";
 
-// Load environment variables
+// Load environment variables from .env
 dotenv.config();
 
 // Determine the WORKER_HOST based on environment
@@ -14,7 +13,7 @@ if (isDev) {
   // For local dev, use window.location.host so the welcome page works
   WORKER_HOST = "window.location.host";
 } else {
-  // For production, REQUIRE the WORKER_HOST env var
+  // For production, REQUIRE the WORKER_HOST env var (set in .env)
   // This is critical because the script will be embedded on other domains
   if (!process.env.WORKER_HOST) {
     console.error("");
@@ -38,7 +37,7 @@ console.log("🎈 Building Cursor Party client...");
 console.log(`📡 Mode: ${isDev ? "development" : "production"}`);
 console.log(`📡 WORKER_HOST: ${WORKER_HOST}`);
 
-// Step 1: Run the splash script (generate meta.js)
+// Generate meta.js with WEBSITES config if available
 if (process.env.WEBSITES) {
   fs.writeFileSync(
     "public/meta.js",
@@ -47,7 +46,7 @@ if (process.env.WEBSITES) {
   console.log("✓ Generated public/meta.js");
 }
 
-// Step 2: Bundle the client code
+// Bundle the client code
 try {
   await esbuild.build({
     entryPoints: ["src/cursors.tsx"],
