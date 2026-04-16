@@ -1,4 +1,5 @@
-import { Server, type Connection, type ConnectionContext } from "partyserver";
+import { Agent, type Connection, type ConnectionContext } from "agents";
+import type { Env } from "./index";
 import type {
   Metadata,
   Presence,
@@ -27,10 +28,15 @@ const CORS = {
 };
 
 // server.ts
-export default class PresenceServer extends Server {
+export default class PresenceServer extends Agent<Env> {
   static options = {
     hibernate: true,
   };
+
+  // Suppress CF_AGENT_* protocol frames — clients use msgpack, not the Agents SDK protocol
+  shouldSendProtocolMessages(): boolean {
+    return false;
+  }
 
   // pending updates are stored in memory and sent every tick
   add: { [id: string]: User } = {};
