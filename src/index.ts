@@ -1,14 +1,14 @@
 import { getAgentByName } from "agents";
-import PresenceServer from "./server";
+import PresenceAgent from "./server";
 import DashboardServer from "./dashboard";
 import { DASHBOARD_SINGLETON } from "./dashboard";
 
 // Export the Durable Object class
-export { PresenceServer, DashboardServer };
+export { PresenceAgent, DashboardServer };
 
 // Define the Env interface for TypeScript
 export interface Env extends Record<string, unknown> {
-  PRESENCE_SERVER: DurableObjectNamespace<PresenceServer>;
+  PRESENCE_SERVER: DurableObjectNamespace<PresenceAgent>;
   DASHBOARD_SERVER: DurableObjectNamespace<DashboardServer>;
   WEBSITES: string;
   ASSETS: Fetcher;
@@ -90,7 +90,7 @@ export default {
       }
 
       // Forward to the Agent instance
-      const agent = await getAgentByName<Env, PresenceServer>(
+      const agent = await getAgentByName<Env, PresenceAgent>(
         env.PRESENCE_SERVER,
         roomId
       );

@@ -30,7 +30,7 @@ const CORS = {
 };
 
 // server.ts
-export default class PresenceServer extends Agent<Env, { href?: string }> {
+export default class PresenceAgent extends Agent<Env, { href?: string }> {
   static options = {
     hibernate: true,
   };

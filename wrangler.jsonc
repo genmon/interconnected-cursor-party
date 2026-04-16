@@ -11,7 +11,7 @@
     "bindings": [
       {
         "name": "PRESENCE_SERVER",
-        "class_name": "PresenceServer",
+        "class_name": "PresenceAgent",
         "script_name": "cursor-party"
       },
       {
@@ -35,7 +35,7 @@
     },
     {
       "tag": "v3",
-      "new_sqlite_classes": ["PresenceServer"]
+      "new_sqlite_classes": ["PresenceAgent"]
     }
   ],
 
