@@ -1,4 +1,4 @@
-import { Agent, type Connection, type ConnectionContext } from "agents";
+import { Agent, getAgentByName, type Connection, type ConnectionContext } from "agents";
 import type { Env } from "./index";
 import type {
   Metadata,
@@ -12,6 +12,8 @@ import {
   decodeMessage,
   encodePartyMessage,
 } from "./presence/presence-schema";
+import { DASHBOARD_SINGLETON } from "./dashboard";
+import type DashboardServer from "./dashboard";
 
 export type ConnectionWithUser = Connection<{
   metadata?: Metadata;
@@ -28,7 +30,7 @@ const CORS = {
 };
 
 // server.ts
-export default class PresenceServer extends Agent<Env> {
+export default class PresenceServer extends Agent<Env, { href?: string }> {
   static options = {
     hibernate: true,
   };
@@ -55,6 +57,18 @@ export default class PresenceServer extends Agent<Env> {
 
     // The client may set name and color (from the presence object) in the query string
     const params = new URLSearchParams(request.url.split("?")[1]);
+
+    // Store the page URL in Agent state for dashboard reporting
+    const from = params.get("from");
+    if (from && !this.state?.href) {
+      try {
+        const href = decodeURIComponent(from);
+        this.setState({ href });
+      } catch {
+        // ignore malformed URLs
+      }
+    }
+
     const presence = {
       name: params.get("name") ?? undefined,
       color: params.get("color") ?? undefined,
@@ -69,6 +83,8 @@ export default class PresenceServer extends Agent<Env> {
     this.join(connection);
 
     //console.log("onConnect", this.party.id, connection.id, request.cf?.country);
+
+    this.reportToDashboard();
   }
 
   enqueueAdd(id: string, user: User) {
@@ -124,6 +140,19 @@ export default class PresenceServer extends Agent<Env> {
     this.scheduleBroadcast().catch((err) => {
       console.error(err);
     });
+    this.reportToDashboard();
+  }
+
+  reportToDashboard() {
+    const href = this.state?.href;
+    if (!href) return;
+    const count = [...this.getConnections()].length;
+    getAgentByName<Env, DashboardServer>(
+      this.env.DASHBOARD_SERVER,
+      DASHBOARD_SINGLETON
+    )
+      .then((stub) => stub.updateTraffic(href, count))
+      .catch((err) => console.error("Dashboard report failed:", err));
   }
 
   onMessage(
