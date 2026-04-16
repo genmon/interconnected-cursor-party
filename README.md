@@ -9,7 +9,7 @@ _Why?_
 - Vibes
 - Because you can start here and then customize.
 
-👉 See a demo: [here's the Cursor Party deployment](https://cursor-party.labs.partykit.dev) behind the multiplayer cursors on the [PartyKit blog](https://blog.partykit.io).
+👉 See it in action on [interconnected.org](https://interconnected.org).
 
 ## tl;dr
 
@@ -56,7 +56,7 @@ When you deploy this to Cloudflare Workers, it will act as your backend for mult
 
 ### Configure and deploy your Cloudflare Worker
 
-For local development, create a `.dev.vars` file. For production, you'll set environment variables in wrangler.toml.
+For local development, create a `.dev.vars` file. For production, you'll set environment variables in wrangler.jsonc.
 
 The `WEBSITES` environment variable is an allowlist. It is a JSON array of URL patterns using the [URL Patterns API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API), and only websites that match one of the patterns will be allowed to connect.
 
@@ -75,7 +75,7 @@ wrangler secret put WEBSITES
 # Then paste your JSON array when prompted
 ```
 
-(If you do this then remove vars from `wrangler.toml` to avoid conflicts.)
+(If you do this then remove vars from `wrangler.jsonc` to avoid conflicts.)
 
 ### Deploy and test
 
@@ -125,4 +125,4 @@ You can modify the code in this repo to change the display of the cursors. You'l
 
 ### Customizing your Worker name
 
-Edit `wrangler.toml` and change the `name` field to customize your Worker's URL.
+Edit `wrangler.jsonc` and change the `name` field to customize your Worker's URL.
