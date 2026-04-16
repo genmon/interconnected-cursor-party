@@ -6,37 +6,37 @@ import * as path from "path";
 // Load environment variables
 dotenv.config();
 
-// Determine the PARTYKIT_HOST based on environment
+// Determine the WORKER_HOST based on environment
 const isDev = process.env.NODE_ENV !== "production";
 
-let PARTYKIT_HOST;
+let WORKER_HOST;
 if (isDev) {
   // For local dev, use window.location.host so the welcome page works
-  PARTYKIT_HOST = "window.location.host";
+  WORKER_HOST = "window.location.host";
 } else {
-  // For production, REQUIRE the PARTYKIT_HOST env var
+  // For production, REQUIRE the WORKER_HOST env var
   // This is critical because the script will be embedded on other domains
-  if (!process.env.PARTYKIT_HOST) {
+  if (!process.env.WORKER_HOST) {
     console.error("");
-    console.error("❌ ERROR: PARTYKIT_HOST environment variable is required for production builds!");
+    console.error("❌ ERROR: WORKER_HOST environment variable is required for production builds!");
     console.error("");
     console.error("The script will be embedded on other websites (e.g., interconnected.org)");
     console.error("and needs to know which worker to connect to.");
     console.error("");
     console.error("Set it in your .env file:");
-    console.error('  PARTYKIT_HOST=cursor-party.YOUR-ACCOUNT.workers.dev');
+    console.error('  WORKER_HOST=cursor-party.YOUR-ACCOUNT.workers.dev');
     console.error("");
     console.error("Or pass it as an environment variable:");
-    console.error('  PARTYKIT_HOST=cursor-party.YOUR-ACCOUNT.workers.dev npm run deploy');
+    console.error('  WORKER_HOST=cursor-party.YOUR-ACCOUNT.workers.dev npm run deploy');
     console.error("");
     process.exit(1);
   }
-  PARTYKIT_HOST = JSON.stringify(process.env.PARTYKIT_HOST);
+  WORKER_HOST = JSON.stringify(process.env.WORKER_HOST);
 }
 
 console.log("🎈 Building Cursor Party client...");
 console.log(`📡 Mode: ${isDev ? "development" : "production"}`);
-console.log(`📡 PARTYKIT_HOST: ${PARTYKIT_HOST}`);
+console.log(`📡 WORKER_HOST: ${WORKER_HOST}`);
 
 // Step 1: Run the splash script (generate meta.js)
 if (process.env.WEBSITES) {
@@ -64,11 +64,11 @@ try {
       react: "@preact/compat",
       "react-dom": "@preact/compat",
     },
-    // Define PARTYKIT_HOST as a global constant
+    // Define WORKER_HOST as a global constant
     // In dev mode, this will be the actual expression window.location.host
     // In production, it will be a string literal
     define: {
-      PARTYKIT_HOST: PARTYKIT_HOST,
+      WORKER_HOST: WORKER_HOST,
     },
     logLevel: "info",
   });
