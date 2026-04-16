@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Cursor Party is a multiplayer cursor tracking system built on Cloudflare Workers with PartyServer (Durable Objects). It allows any website to add real-time collaborative cursors by including a single script tag. The project consists of:
+Cursor Party is a multiplayer cursor tracking system built on Cloudflare Workers with Cloudflare Agents SDK (Durable Objects). It allows any website to add real-time collaborative cursors by including a single script tag. The project consists of:
 
-- **Backend**: PartyServer Durable Object (`src/server.ts`) that manages WebSocket connections and broadcasts cursor positions
-- **Worker Entry Point**: Cloudflare Worker (`src/index.ts`) that routes requests using `routePartykitRequest`
+- **Backend**: Agents SDK Durable Object (`src/server.ts`) that manages WebSocket connections and broadcasts cursor positions
+- **Worker Entry Point**: Cloudflare Worker (`src/index.ts`) that routes requests using manual URL parsing + `getAgentByName`
 - **Frontend**: React/Preact client (`src/cursors.tsx`) that runs embedded in target websites via a script tag
 
 ## Development Commands
@@ -46,10 +46,10 @@ WEBSITES=["http://localhost:*/*", "http://127.0.0.1:*/*", "https://your-site.com
 
 ### Cloudflare Workers Configuration
 
-`wrangler.toml` defines the Worker structure:
-- **Worker entry point**: `src/index.ts` - Routes requests with `routePartykitRequest()`
+`wrangler.jsonc` defines the Worker structure:
+- **Worker entry point**: `src/index.ts` - Routes requests with manual URL parsing + `getAgentByName`
 - **Durable Object**: `PresenceServer` class in `src/server.ts`
-- **Static assets**: Served from `public/` directory (configured in `wrangler.toml`)
+- **Static assets**: Served from `public/` directory (configured in `wrangler.jsonc`)
 - **Environment variables**: `WEBSITES` allowlist (set via `.dev.vars` locally or Cloudflare dashboard for production)
 
 ### Build Process
@@ -58,28 +58,28 @@ Client bundling is handled separately by `scripts/build-client.mjs`:
 - Bundles `src/cursors.tsx` → `public/cursors.js` (IIFE format)
 - Uses esbuild for bundling
 - Aliases React to `@preact/compat` for smaller bundle size
-- Defines `PARTYKIT_HOST` global constant:
+- Defines `WORKER_HOST` global constant:
   - **Development**: Set to `window.location.host` (auto-detects from browser when testing welcome page)
-  - **Production**: **REQUIRES** `PARTYKIT_HOST` env var in `.env` file (hardcoded into bundle)
-- Runs `scripts/splash-script.mjs` to generate `public/meta.js`
+  - **Production**: **REQUIRES** `WORKER_HOST` env var in `.env` file (hardcoded into bundle)
+- Generates `public/meta.js` with the `WEBSITES` config if set
 - Minifies in production (`NODE_ENV=production`)
 
 The build runs automatically before `wrangler dev` and `wrangler deploy`.
 
-**Critical for Production**: The `PARTYKIT_HOST` environment variable **must** be set in your `.env` file for production builds. This is because:
+**Critical for Production**: The `WORKER_HOST` environment variable **must** be set in your `.env` file for production builds. This is because:
 - The script will be embedded on other domains (e.g., `interconnected.org`)
 - It needs to know which worker to connect back to (e.g., `cursor-party.genmon.workers.dev`)
 - Using `window.location.host` would try to connect to the embedding site instead of the worker
 
 Example `.env`:
 ```env
-PARTYKIT_HOST=cursor-party.YOUR-ACCOUNT.workers.dev
+WORKER_HOST=cursor-party.YOUR-ACCOUNT.workers.dev
 WEBSITES=["https://cursor-party.YOUR-ACCOUNT.workers.dev/*", "https://(www.)?your-site.com/*"]
 ```
 
 ### Message Flow
 
-The system uses **msgpack** for efficient binary serialization of all WebSocket messages:
+The system uses **msgpack** for efficient binary serialization of all WebSocket messages. All messages are validated at runtime using **Zod schemas** defined in `src/presence/presence-schema.ts`:
 
 1. **Client → Server** (`ClientMessage`):
    - `type: "update"` - Updates user's cursor position, name, color, chat message, or text selection
@@ -126,7 +126,7 @@ WEBSITES=["http://localhost:*/*", "https://your-site.com/*"]
 ["https://cursor-party.YOUR-WORKER.workers.dev/*", "https://(www.)?example.org/*"]
 ```
 
-The Worker's `onBeforeConnect` hook (in `src/index.ts`) validates the `from` query parameter against these patterns before allowing WebSocket connections.
+The Worker fetch handler (in `src/index.ts`) validates the `from` query parameter against these patterns before forwarding WebSocket connections to the Agent.
 
 ### Client Embedding
 
@@ -142,12 +142,12 @@ On load, it:
 3. Connects to the Cloudflare Worker with:
    - Party name: `presence-server` (matches the kebab-cased Durable Object binding `PRESENCE_SERVER`)
    - Room ID: base64-encoded URL path
-   - WebSocket URL: `ws(s)://[host]/parties/presence-server/[room-id]`
+   - WebSocket URL: `ws(s)://[host]/parties/presence-server/[room-id]` (legacy PartyServer path format, preserved for backwards compatibility with cached client scripts)
 4. Renders cursor overlays on top of the host website
 
 The Worker's static assets feature serves `public/cursors.js` automatically.
 
-**Important**: The party name `presence-server` is derived from the Durable Object binding name `PRESENCE_SERVER` in `wrangler.toml`, converted to kebab-case. If you rename the binding, update the party name in `src/presence/presence-context.tsx` accordingly.
+**Important**: The party name `presence-server` is derived from the Durable Object binding name `PRESENCE_SERVER` in `wrangler.jsonc`, converted to kebab-case. If you rename the binding, update the party name in `src/presence/presence-context.tsx` accordingly.
 
 ### Key Features
 
@@ -167,6 +167,10 @@ The Worker's static assets feature serves `public/cursors.js` automatically.
 - Hides cursors when too many users are present
 - Appears automatically when busy
 
+## Testing and Linting
+
+There are no test or lint scripts configured. Verify changes by running `npm run build:client` (checks esbuild compilation) and manual testing with `npm run dev`.
+
 ## TypeScript Configuration
 
 - Target: ES2020 with React JSX
@@ -183,33 +187,26 @@ To modify cursor appearance or behavior:
 - **Cursor visual**: Edit `src/presence/cursor.tsx` to change pointer icon or style
 - **Cursor container**: Edit `src/presence/other-cursors.tsx` to adjust z-index or positioning
 - **Features**: Toggle `ENABLE_CHAT` or `ENABLE_HIGHLIGHTS` flags in `src/presence/Cursors.tsx`
-- **Worker name/URL**: Edit `name` field in `wrangler.toml`
+- **Worker name/URL**: Edit `name` field in `wrangler.jsonc`
 - **Custom domain**: Configure via Cloudflare dashboard (Workers & Pages > Your Worker > Settings > Triggers)
 
-## Key API Differences from PartyKit
+## Agents SDK Notes
 
-This project was migrated from PartyKit to PartyServer (Cloudflare Workers). Key differences:
-
-### Import Changes
-- `partykit/server` → `partyserver`
-- No `Party` namespace - types exported directly: `Server`, `Connection`, `ConnectionContext`
+This project uses the Cloudflare Agents SDK (`agents` package). Key details:
 
 ### Server Class
-- Extends `Server` from `partyserver` (not implements `Party.Server`)
-- Constructor removed - Durable Objects don't have public constructors
-- `this.party.id` → `this.name`
-- `this.party.getConnections()` → `this.getConnections()`
-- `this.party.broadcast()` → `this.broadcast()`
+- Extends `Agent<Env>` from `agents`
+- Lifecycle hooks: `onConnect`, `onMessage`, `onClose`, `onError` (same signatures as PartyServer)
+- `connection.setState()`, `this.getConnections()`, `this.broadcast()`, `this.name` — standard Agent APIs
+- `shouldSendProtocolMessages()` returns `false` to suppress `CF_AGENT_*` protocol frames (clients use msgpack)
 
-### Method Signatures
-- `onConnect(connection, ctx)` - context is second parameter
-- `onMessage(connection, message)` - **order swapped** from PartyKit!
-- `onClose(connection, code, reason, wasClean)` - additional parameters
-- `onError(connection, error)` - error parameter added
+### Routing
+- The Worker entry point (`src/index.ts`) uses manual URL parsing + `getAgentByName` instead of `routeAgentRequest`
+- This preserves the legacy `/parties/presence-server/{room-id}` URL path for backwards compatibility with cached client scripts
+- Website allowlist validation runs in the Worker fetch handler before forwarding to the Agent
 
 ### Configuration
-- `static onBeforeConnect` moved to Worker's `routePartykitRequest` options in `src/index.ts`
-- No access to `lobby.env` - environment variables accessed from Worker's `env` object
-
-### Hibernation
-- Enable via `static options = { hibernate: true }` for automatic cost optimization
+- `wrangler.jsonc` (not TOML) with `$schema` for editor validation
+- Durable Object migration uses `new_sqlite_classes` (required by Agents SDK)
+- `nodejs_compat` compatibility flag required by the agents package
+- Hibernation enabled via `static options = { hibernate: true }`
