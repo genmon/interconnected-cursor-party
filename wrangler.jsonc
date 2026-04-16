@@ -26,11 +26,16 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["PresenceServer"]
+      "new_classes": ["PresenceServer"]
     },
     {
       "tag": "v2",
-      "new_sqlite_classes": ["DashboardServer"]
+      "new_sqlite_classes": ["DashboardServer"],
+      "deleted_classes": ["PresenceServer"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["PresenceServer"]
     }
   ],
 
