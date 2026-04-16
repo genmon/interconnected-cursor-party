@@ -1,4 +1,4 @@
-import { routePartykitRequest } from "partyserver";
+import { getAgentByName } from "agents";
 import PresenceServer from "./server";
 
 // Export the Durable Object class
@@ -6,13 +6,13 @@ export { PresenceServer };
 
 // Define the Env interface for TypeScript
 export interface Env extends Record<string, unknown> {
-  PRESENCE_SERVER: DurableObjectNamespace;
+  PRESENCE_SERVER: DurableObjectNamespace<PresenceServer>;
   WEBSITES: string;
   ASSETS: Fetcher;
 }
 
-// onBeforeConnect handler for website allowlist
-function onBeforeConnect(req: Request, env: Env) {
+// Website allowlist validation
+function onBeforeConnect(req: Request, env: Env): Response | null {
   // we assume that the request url is encoded into the request query param
   const encodedHomeURL = new URL(req.url).searchParams.get("from");
 
@@ -25,7 +25,7 @@ function onBeforeConnect(req: Request, env: Env) {
   const WEBSITES = JSON.parse(env.WEBSITES || "[]") as string[];
 
   if (["localhost", "127.0.0.1", "0.0.0.0"].includes(homeURL.hostname)) {
-    return req;
+    return null;
   }
 
   const matchWith = homeURL.origin + homeURL.pathname;
@@ -59,7 +59,7 @@ Learn more: https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API
     });
   }
 
-  return req;
+  return null;
 }
 
 // Worker fetch handler
@@ -69,15 +69,34 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
-    // Try PartyKit-style routing first (for WebSocket connections and party routes)
-    const partyResponse = await routePartykitRequest(request, env, {
-      onBeforeConnect: (req) => onBeforeConnect(req, env),
-    });
-    if (partyResponse) return partyResponse;
+    const url = new URL(request.url);
 
-    // If no party route matched, fall through to static assets
+    // Match the legacy PartyServer URL convention: /parties/presence-server/{room-id}
+    // Preserved for backwards compatibility with cached client scripts
+    const match = url.pathname.match(
+      /^\/parties\/presence-server\/(.+?)(?:\/|$)/
+    );
+
+    if (match) {
+      const roomId = match[1];
+
+      // Run website allowlist validation for WebSocket upgrades
+      if (request.headers.get("Upgrade") === "websocket") {
+        const rejection = onBeforeConnect(request, env);
+        if (rejection) return rejection;
+      }
+
+      // Forward to the Agent instance
+      const agent = await getAgentByName<PresenceServer>(
+        env.PRESENCE_SERVER,
+        roomId
+      );
+      return agent.fetch(request);
+    }
+
+    // Non-party requests: fall through to static assets
     // Cloudflare Workers will automatically serve from the assets directory
-    // configured in wrangler.toml
+    // configured in wrangler.jsonc
     return new Response("Not found", { status: 404 });
   },
 };
