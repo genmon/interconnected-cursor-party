@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cursor-party",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+
+  // Durable Objects configuration
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PRESENCE_SERVER",
+        "class_name": "PresenceServer",
+        "script_name": "cursor-party"
+      }
+    ]
+  },
+
+  // Durable Objects migrations
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PresenceServer"]
+    }
+  ],
+
+  // Static assets configuration
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+
+  // Environment variables
+  "vars": {
+    "WEBSITES": "[\"https://cursor-party.genmon.workers.dev/*\", \"https://(www.)?interconnected.org/*\"]"
+  },
+
+  // Observability
+  "observability": {
+    "enabled": true
+  }
+}
