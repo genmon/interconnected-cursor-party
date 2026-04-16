@@ -284,3 +284,10 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
     return new Response("Method Not Allowed", { status: 405 });
   }
 }
+
+// Dummy export — Cloudflare requires the old class name to still be exported
+// until the delete migration is fully applied. Not used by any binding.
+export class PresenceServer extends Agent<Env> {
+  static options = { hibernate: true };
+  shouldSendProtocolMessages(): boolean { return false; }
+}

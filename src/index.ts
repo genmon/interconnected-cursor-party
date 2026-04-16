@@ -1,10 +1,11 @@
 import { getAgentByName } from "agents";
-import PresenceAgent from "./server";
+import PresenceAgent, { PresenceServer } from "./server";
 import DashboardServer from "./dashboard";
 import { DASHBOARD_SINGLETON } from "./dashboard";
 
-// Export the Durable Object class
-export { PresenceAgent, DashboardServer };
+// Export Durable Object classes
+// PresenceServer is a dummy kept for migration compatibility
+export { PresenceAgent, PresenceServer, DashboardServer };
 
 // Define the Env interface for TypeScript
 export interface Env extends Record<string, unknown> {
