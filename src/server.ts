@@ -151,7 +151,7 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
       this.env.DASHBOARD_SERVER,
       DASHBOARD_SINGLETON
     )
-      .then((stub) => stub.updateTraffic(href, count))
+      .then((stub) => stub.updateTraffic(href, count, this.name))
       .catch((err) => console.error("Dashboard report failed:", err));
   }
 

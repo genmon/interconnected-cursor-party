@@ -3,8 +3,10 @@ import type { Env } from "./index";
 
 export const DASHBOARD_SINGLETON = "index";
 
+type TrafficEntry = { name: string; count: number };
 type DashboardState = {
-  traffic: Record<string, number>;
+  traffic: Record<string, TrafficEntry>;
+  reconcileScheduleId?: string;
 };
 
 export default class DashboardServer extends Agent<Env, DashboardState> {
@@ -19,12 +21,12 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   }
 
   @callable()
-  updateTraffic(href: string, userCount: number) {
+  updateTraffic(href: string, userCount: number, name: string) {
     const traffic = { ...this.state.traffic };
     if (userCount <= 0) {
       delete traffic[href];
     } else {
-      traffic[href] = userCount;
+      traffic[href] = { name, count: userCount };
     }
     this.setState({ ...this.state, traffic });
   }
@@ -32,10 +34,10 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   async onRequest(req: Request) {
     if (req.method === "GET") {
       const traffic = this.state.traffic;
-      const sorted = Object.entries(traffic).sort(([, a], [, b]) => b - a);
+      const sorted = Object.entries(traffic).sort(([, a], [, b]) => b.count - a.count);
 
       const rows = sorted
-        .map(([href, count]) => `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`)
+        .map(([href, { count }]) => `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`)
         .join("\n");
 
       const html = `<!DOCTYPE html>
@@ -53,7 +55,7 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
 </head>
 <body>
   <h1>Cursor Party Dashboard</h1>
-  <p>${sorted.length} active page${sorted.length !== 1 ? "s" : ""}, ${Object.values(traffic).reduce((a, b) => a + b, 0)} total users</p>
+  <p>${sorted.length} active page${sorted.length !== 1 ? "s" : ""}, ${Object.values(traffic).reduce((sum, v) => sum + v.count, 0)} total users</p>
   <table>
     <thead><tr><th>Users</th><th>Page</th></tr></thead>
     <tbody>${rows || "<tr><td colspan=\"2\">No active sessions</td></tr>"}</tbody>
