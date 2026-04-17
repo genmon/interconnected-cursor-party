@@ -83,6 +83,53 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     <thead><tr><th>Users</th><th>Page</th></tr></thead>
     <tbody>${rows || "<tr><td colspan=\"2\">No active sessions</td></tr>"}</tbody>
   </table>
+<script>
+(function() {
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function render(traffic) {
+    var entries = Object.entries(traffic).sort(function(a, b) {
+      return b[1].count - a[1].count;
+    });
+    var total = entries.reduce(function(s, e) { return s + e[1].count; }, 0);
+    var summary = document.getElementById("summary");
+    if (summary) {
+      summary.textContent = entries.length + " active page" +
+        (entries.length !== 1 ? "s" : "") + ", " + total + " total users";
+    }
+    var tbody = document.querySelector("tbody");
+    if (tbody) {
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2">No active sessions</td></tr>';
+      } else {
+        tbody.innerHTML = entries.map(function(e) {
+          var href = e[0];
+          var count = e[1].count;
+          return '<tr><td>' + count + '</td><td><a href="' +
+            escapeHtml(href) + '">' + escapeHtml(href) + '</a></td></tr>';
+        }).join("");
+      }
+    }
+  }
+  var ws;
+  function connect() {
+    var proto = location.protocol === "https:" ? "wss:" : "ws:";
+    ws = new WebSocket(proto + "//" + location.host + "/dashboard");
+    ws.onmessage = function(ev) {
+      try {
+        var msg = JSON.parse(ev.data);
+        if (msg && msg.type === "state") render(msg.traffic);
+      } catch (_) {}
+    };
+    ws.onclose = function() { setTimeout(connect, 2000); };
+    ws.onerror = function() { try { ws.close(); } catch (_) {} };
+  }
+  connect();
+})();
+</script>
 </body>
 </html>`;
 
