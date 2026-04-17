@@ -1,5 +1,6 @@
-import { Agent, callable, type Connection } from "agents";
+import { Agent, callable, getAgentByName, type Connection } from "agents";
 import type { Env } from "./index";
+import type PresenceAgent from "./server";
 
 export const DASHBOARD_SINGLETON = "index";
 
@@ -30,6 +31,44 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     connection.send(
       JSON.stringify({ type: "state", traffic: this.state.traffic })
     );
+  }
+
+  async onStart() {
+    const existingId = this.state.reconcileScheduleId;
+    if (existingId) {
+      const schedules = this.getSchedules();
+      if (schedules.some((s) => s.id === existingId)) return;
+    }
+    const schedule = await this.scheduleEvery(86400, "reconcile");
+    this.setState({ ...this.state, reconcileScheduleId: schedule.id });
+  }
+
+  async reconcile() {
+    const entries = Object.entries(this.state.traffic);
+    const next: Record<string, TrafficEntry> = {};
+    for (const [href, entry] of entries) {
+      // Skip legacy-shape entries that lack a name
+      if (
+        !entry ||
+        typeof entry !== "object" ||
+        typeof entry.name !== "string"
+      ) {
+        continue;
+      }
+      const { name } = entry;
+      try {
+        const stub = await getAgentByName<Env, PresenceAgent>(
+          this.env.PRESENCE_SERVER,
+          name
+        );
+        const count = await stub.getConnectionCount();
+        if (count > 0) next[href] = { name, count };
+      } catch (err) {
+        console.error(`Reconcile failed for ${href} (${name}):`, err);
+      }
+    }
+    this.setState({ ...this.state, traffic: next });
+    this.broadcastState();
   }
 
   @callable()
