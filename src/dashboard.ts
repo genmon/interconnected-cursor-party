@@ -1,4 +1,4 @@
-import { Agent, callable } from "agents";
+import { Agent, callable, type Connection } from "agents";
 import type { Env } from "./index";
 
 export const DASHBOARD_SINGLETON = "index";
@@ -20,6 +20,18 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     return false;
   }
 
+  private broadcastState() {
+    this.broadcast(
+      JSON.stringify({ type: "state", traffic: this.state.traffic })
+    );
+  }
+
+  onConnect(connection: Connection) {
+    connection.send(
+      JSON.stringify({ type: "state", traffic: this.state.traffic })
+    );
+  }
+
   @callable()
   updateTraffic(href: string, userCount: number, name: string) {
     const traffic = { ...this.state.traffic };
@@ -29,6 +41,7 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
       traffic[href] = { name, count: userCount };
     }
     this.setState({ ...this.state, traffic });
+    this.broadcastState();
   }
 
   async onRequest(req: Request) {
