@@ -1,4 +1,4 @@
-import { Agent, getAgentByName, type Connection, type ConnectionContext } from "agents";
+import { Agent, callable, getAgentByName, type Connection, type ConnectionContext } from "agents";
 import type { Env } from "./index";
 import type {
   Metadata,
@@ -153,6 +153,11 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
     )
       .then((stub) => stub.updateTraffic(href, count, this.name))
       .catch((err) => console.error("Dashboard report failed:", err));
+  }
+
+  @callable()
+  getConnectionCount(): number {
+    return [...this.getConnections()].length;
   }
 
   onMessage(
