@@ -121,7 +121,7 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
 (function() {
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function(c) {
-      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
   function render(traffic) {
