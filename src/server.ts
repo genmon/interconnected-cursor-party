@@ -207,9 +207,15 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
   onError(connection: Connection, error: unknown): void;
   onError(error: unknown): void;
   onError(connectionOrError: Connection | unknown, error?: unknown) {
-    if (connectionOrError instanceof Object && "id" in (connectionOrError as Connection)) {
+    console.error("PresenceAgent onError", error ?? connectionOrError);
+    if (
+      connectionOrError &&
+      typeof connectionOrError === "object" &&
+      "id" in (connectionOrError as Connection)
+    ) {
       this.leave(connectionOrError as ConnectionWithUser);
     }
+    this.reportToDashboard();
   }
 
   async scheduleBroadcast() {
