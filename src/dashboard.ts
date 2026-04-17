@@ -7,7 +7,6 @@ export const DASHBOARD_SINGLETON = "index";
 type TrafficEntry = { name: string; count: number };
 type DashboardState = {
   traffic: Record<string, TrafficEntry>;
-  reconcileScheduleId?: string;
 };
 
 export default class DashboardServer extends Agent<Env, DashboardState> {
@@ -34,20 +33,15 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   }
 
   async onStart() {
-    const existingId = this.state.reconcileScheduleId;
-    if (existingId) {
-      const schedules = this.getSchedules();
-      if (schedules.some((s) => s.id === existingId)) return;
-    }
-    const schedule = await this.scheduleEvery(86400, "reconcile");
-    this.setState({ ...this.state, reconcileScheduleId: schedule.id });
+    await this.scheduleEvery(86400, "reconcile");
   }
 
   async reconcile() {
     const entries = Object.entries(this.state.traffic);
     const next: Record<string, TrafficEntry> = {};
     for (const [href, entry] of entries) {
-      // Skip legacy-shape entries that lack a name
+      // Runtime guard against legacy `Record<string, number>` entries
+      // that may still be in storage from before Task 1.
       if (
         !entry ||
         typeof entry !== "object" ||
@@ -64,6 +58,7 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
         const count = await stub.getConnectionCount();
         if (count > 0) next[href] = { name, count };
       } catch (err) {
+        // Drop on error: reconcile's purpose is to clear stale entries.
         console.error(`Reconcile failed for ${href} (${name}):`, err);
       }
     }
