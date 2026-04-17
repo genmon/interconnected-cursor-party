@@ -47,11 +47,21 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   async onRequest(req: Request) {
     if (req.method === "GET") {
       const traffic = this.state.traffic;
-      const sorted = Object.entries(traffic).sort(([, a], [, b]) => b.count - a.count);
+      const sorted = Object.entries(traffic).sort(
+        ([, a], [, b]) => b.count - a.count
+      );
 
       const rows = sorted
-        .map(([href, { count }]) => `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`)
+        .map(
+          ([href, { count }]) =>
+            `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`
+        )
         .join("\n");
+
+      const totalUsers = Object.values(traffic).reduce(
+        (sum, v) => sum + v.count,
+        0
+      );
 
       const html = `<!DOCTYPE html>
 <html>
@@ -68,7 +78,7 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
 </head>
 <body>
   <h1>Cursor Party Dashboard</h1>
-  <p>${sorted.length} active page${sorted.length !== 1 ? "s" : ""}, ${Object.values(traffic).reduce((sum, v) => sum + v.count, 0)} total users</p>
+  <p id="summary">${sorted.length} active page${sorted.length !== 1 ? "s" : ""}, ${totalUsers} total users</p>
   <table>
     <thead><tr><th>Users</th><th>Page</th></tr></thead>
     <tbody>${rows || "<tr><td colspan=\"2\">No active sessions</td></tr>"}</tbody>
