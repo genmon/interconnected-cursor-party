@@ -1,4 +1,4 @@
-import { Agent, callable, getAgentByName, type Connection } from "agents";
+import { Agent, getAgentByName, type Connection } from "agents";
 import type { Env } from "./index";
 import type PresenceAgent from "./server";
 
@@ -30,6 +30,11 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     connection.send(
       JSON.stringify({ type: "state", traffic: this.state.traffic })
     );
+  }
+
+  onMessage(connection: Connection) {
+    // Dashboard is receive-only; drop anything a client sends.
+    connection.close(1003, "Dashboard is read-only");
   }
 
   async onStart() {
@@ -70,7 +75,6 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     this.broadcastState();
   }
 
-  @callable()
   updateTraffic(href: string, userCount: number, name: string) {
     const traffic = { ...this.state.traffic };
     if (userCount <= 0) {
