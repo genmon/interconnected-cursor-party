@@ -30,6 +30,10 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     hibernate: true,
   };
 
+  private static BROADCAST_INTERVAL_MS = 250; // 4Hz cap
+  private lastBroadcast = 0;
+  private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+
   initialState: DashboardState = { traffic: {} };
 
   shouldSendProtocolMessages(): boolean {
@@ -37,6 +41,20 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   }
 
   private broadcastState() {
+    const now = Date.now();
+    const ago = now - this.lastBroadcast;
+    if (ago >= DashboardServer.BROADCAST_INTERVAL_MS) {
+      this._doBroadcast();
+    } else if (!this.broadcastTimer) {
+      this.broadcastTimer = setTimeout(() => {
+        this.broadcastTimer = null;
+        this._doBroadcast();
+      }, DashboardServer.BROADCAST_INTERVAL_MS - ago);
+    }
+  }
+
+  private _doBroadcast() {
+    this.lastBroadcast = Date.now();
     this.broadcast(
       JSON.stringify({ type: "state", traffic: this.state.traffic })
     );
