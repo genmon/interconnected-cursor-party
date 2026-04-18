@@ -66,27 +66,7 @@ Client bundling is handled separately by `scripts/build-client.mjs`:
 
 The build runs automatically before `wrangler dev` and `wrangler deploy`.
 
-**Critical for Production**: The `WORKER_HOST` environment variable **must** be set in the production-build environment. Reason:
-- The script will be embedded on other domains (e.g., `interconnected.org`)
-- It needs to know which worker to connect back to (e.g., `cursor-party.genmon.workers.dev`)
-- Using `window.location.host` would try to connect to the embedding site instead of the worker
-
-Where to set `WORKER_HOST`:
-
-- **Local production builds** (`npm run deploy` from a dev machine): in `.env`, e.g.
-  ```env
-  WORKER_HOST=cursor-party.YOUR-ACCOUNT.workers.dev
-  WEBSITES=["https://cursor-party.YOUR-ACCOUNT.workers.dev/*", "https://(www.)?your-site.com/*"]
-  ```
-- **Cloudflare Workers Builds** (automatic deploys from GitHub pushes): in the Cloudflare dashboard under Worker → Settings → **Build → Variables and secrets**, add `WORKER_HOST` as a plain variable. The automatic build runs `npm run build`, which sets `NODE_ENV=production` and passes through the dashboard-defined env var. `WEBSITES` is separate — see "Security: Website Allowlist" below.
-
-### npm script contract
-
-- `build:client` — plain esbuild bundle; uses current `NODE_ENV`. Development mode by default: `WORKER_HOST` is `window.location.host` (and the env var is ignored).
-- `build` — `NODE_ENV=production npm run build:client`. This is what Cloudflare Workers Builds invokes. **Production mode: `WORKER_HOST` env var is required.**
-- `dev` — `build:client` (dev mode) then `wrangler dev`.
-- `deploy` — `npm run build && wrangler deploy` (production bundle, then push).
-- `preview` — `build:client` (dev mode) then `wrangler dev --remote`.
+**Critical for Production**: `WORKER_HOST` must be set in the production-build environment (in `.env` for local `npm run deploy`, or in the Cloudflare dashboard Build → Variables and secrets for automatic deploys). See the README "Development" section for the full setup walkthrough and npm script contract.
 
 ### Message Flow
 
