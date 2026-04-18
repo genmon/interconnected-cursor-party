@@ -201,10 +201,22 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   function connect() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(proto + "//" + location.host + "/dashboard");
+    var pendingTraffic = null;
+    var rafPending = false;
     ws.onmessage = function(ev) {
       try {
         var msg = JSON.parse(ev.data);
-        if (msg && msg.type === "state") render(msg.traffic);
+        if (msg && msg.type === "state") {
+          pendingTraffic = msg.traffic;
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(function() {
+              rafPending = false;
+              if (pendingTraffic) render(pendingTraffic);
+              pendingTraffic = null;
+            });
+          }
+        }
       } catch (_) {}
     };
     ws.onclose = function() { setTimeout(connect, 2000); };
