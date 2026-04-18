@@ -49,22 +49,23 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
             name
           );
           const count = await stub.getConnectionCount();
-          return { href, name, count };
+          return { href, count };
         } catch (err) {
           // Drop on error: reconcile's purpose is to clear stale entries.
           console.error(`Reconcile failed for ${href} (${name}):`, err);
-          return { href, name, count: 0 };
+          return { href, count: 0 };
         }
       })
     );
-    // Atomic apply: input gates don't cover RPC awaits, so this prevents
-    // queued updateTraffic calls from being clobbered by a stale snapshot.
+    // Merge into current state: only DELETE entries whose RPC returned 0.
+    // Counts and new entries from updateTraffic during the fan-out are
+    // fresher than our RPC snapshot, so leave them alone.
     await this.ctx.blockConcurrencyWhile(async () => {
-      const next: Record<string, TrafficEntry> = {};
-      for (const { href, name, count } of results) {
-        if (count > 0) next[href] = { name, count };
+      const traffic = { ...this.state.traffic };
+      for (const { href, count } of results) {
+        if (count === 0) delete traffic[href];
       }
-      this.setState({ ...this.state, traffic: next });
+      this.setState({ ...this.state, traffic });
     });
     this.broadcastState();
   }
