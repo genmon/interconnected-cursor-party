@@ -9,6 +9,22 @@ type DashboardState = {
   traffic: Record<string, TrafficEntry>;
 };
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!
+  );
+}
+
+function safeHref(href: string): string {
+  try {
+    const u = new URL(href);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "#";
+  } catch {
+    return "#";
+  }
+  return href;
+}
+
 export default class DashboardServer extends Agent<Env, DashboardState> {
   static options = {
     hibernate: true,
@@ -94,10 +110,11 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
       );
 
       const rows = sorted
-        .map(
-          ([href, { count }]) =>
-            `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`
-        )
+        .map(([href, { count }]) => {
+          const safe = escapeHtml(safeHref(href));
+          const text = escapeHtml(href);
+          return `<tr><td>${count}</td><td><a href="${safe}">${text}</a></td></tr>`;
+        })
         .join("\n");
 
       const totalUsers = Object.values(traffic).reduce(
@@ -110,12 +127,18 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
 <head>
   <title>Cursor Party Dashboard</title>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; }
     th:first-child, td:first-child { width: 80px; text-align: right; }
-    a { color: #0066cc; }
+    a { color: #0066cc; word-break: break-all; }
+    @media (max-width: 600px) {
+      body { margin: 20px auto; padding: 0 12px; }
+      th, td { padding: 6px 8px; }
+      th:first-child, td:first-child { width: 56px; }
+    }
   </style>
 </head>
 <body>
