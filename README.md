@@ -56,30 +56,46 @@ When you deploy this to Cloudflare Workers, it will act as your backend for mult
 
 ### Configure and deploy your Cloudflare Worker
 
-For local development, create a `.dev.vars` file. For production, you'll set environment variables in wrangler.jsonc.
+There are two environment variables you need to set.
 
-The `WEBSITES` environment variable is an allowlist. It is a JSON array of URL patterns using the [URL Patterns API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API), and only websites that match one of the patterns will be allowed to connect.
+#### `WEBSITES` (allowlist)
 
-_(This is important to control usage and costs. Very large websites with many concurrent users could result in higher Cloudflare Workers charges.)_
+A JSON array of URL patterns using the [URL Patterns API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API). Only websites matching one of the patterns can connect.
 
-For local development, create `.dev.vars`:
+_(Important: controls usage and costs. Large sites with many concurrent users can run up Cloudflare Workers charges.)_
+
+For **local development**, create `.dev.vars`:
 
 ```env
 WEBSITES=["http://localhost:*/*", "https://your-website.com/*", "https://(www.)?example.org/*"]
 ```
 
-For production, set the environment variable in `wrangler.jsonc` or use:
+For **production**, set in `wrangler.jsonc` or via:
 
 ```bash
 wrangler secret put WEBSITES
 # Then paste your JSON array when prompted
 ```
 
-(If you do this then remove vars from `wrangler.jsonc` to avoid conflicts.)
+(If you use `wrangler secret`, remove `WEBSITES` from `wrangler.jsonc` to avoid conflicts.)
+
+#### `WORKER_HOST` (required for production)
+
+The hostname of your deployed Worker, e.g. `cursor-party.YOUR-ACCOUNT.workers.dev`. The build bakes this into `public/cursors.js` so that when the script runs on another site (e.g. `example.org`), it connects back to your Worker instead of the embedding site.
+
+For **local development**, the build uses `window.location.host` and you can ignore this.
+
+For **local production builds** (`npm run deploy` from your machine), create a `.env` file:
+
+```env
+WORKER_HOST=cursor-party.YOUR-ACCOUNT.workers.dev
+```
+
+For **automatic deploys via Cloudflare Workers Builds** (GitHub-integrated), set it in the Cloudflare dashboard: Worker → Settings → **Build → Variables and secrets** → add `WORKER_HOST` as a plain variable. The dashboard-defined variable flows into `npm run build`, which runs in production mode.
 
 ### Deploy and test
 
-- Run `npm run deploy`
+- Run `npm run deploy` (or push to GitHub if you've set up Cloudflare Workers Builds)
 - In your browser, visit `https://cursor-party.YOUR-CLOUDFLARE-NAME.workers.dev`
 
 You should see the same welcome page as before.
@@ -105,6 +121,28 @@ BONUS SECRET FEATURE: type `/` to cursor chat with other users.
 ### Stay up to date
 
 Run `git pull` periodically in your working directory for new features and fixes. Also run `npm install` to keep the dependencies up to date, then redeploy with `npm run deploy`.
+
+## Development
+
+### npm scripts
+
+| Script | What it does |
+|---|---|
+| `npm run dev` | Builds the client in **development mode** (`WORKER_HOST = window.location.host`), then starts `wrangler dev` on `http://localhost:8787`. |
+| `npm run build:client` | Runs only the esbuild step in development mode. |
+| `npm run build` | Runs the esbuild step in **production mode** (`NODE_ENV=production`). Requires `WORKER_HOST` env var. This is what Cloudflare Workers Builds invokes. |
+| `npm run deploy` | `npm run build && wrangler deploy` — production bundle, then push to Cloudflare. |
+| `npm run preview` | Dev build + `wrangler dev --remote` for testing against live Cloudflare infra. |
+
+### Automatic deploys via Cloudflare Workers Builds
+
+You can connect your fork to Cloudflare Workers Builds so every push to `main` deploys automatically:
+
+1. In the Cloudflare dashboard, go to your Worker → Settings → **Build**.
+2. Connect the GitHub repository.
+3. Set the **Build command** to `npm run build` and the **Deploy command** to `npx wrangler deploy`.
+4. Under **Variables and secrets**, add `WORKER_HOST` (plain variable) with the value of your Worker's hostname.
+5. `WEBSITES` — set as either a `wrangler.jsonc` var or via `wrangler secret put WEBSITES`, not as a Cloudflare Workers Builds variable.
 
 ## Disabling secret cursor chat
 

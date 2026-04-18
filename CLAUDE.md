@@ -66,16 +66,7 @@ Client bundling is handled separately by `scripts/build-client.mjs`:
 
 The build runs automatically before `wrangler dev` and `wrangler deploy`.
 
-**Critical for Production**: The `WORKER_HOST` environment variable **must** be set in your `.env` file for production builds. This is because:
-- The script will be embedded on other domains (e.g., `interconnected.org`)
-- It needs to know which worker to connect back to (e.g., `cursor-party.genmon.workers.dev`)
-- Using `window.location.host` would try to connect to the embedding site instead of the worker
-
-Example `.env`:
-```env
-WORKER_HOST=cursor-party.YOUR-ACCOUNT.workers.dev
-WEBSITES=["https://cursor-party.YOUR-ACCOUNT.workers.dev/*", "https://(www.)?your-site.com/*"]
-```
+**Critical for Production**: `WORKER_HOST` must be set in the production-build environment (in `.env` for local `npm run deploy`, or in the Cloudflare dashboard Build → Variables and secrets for automatic deploys). See the README "Development" section for the full setup walkthrough and npm script contract.
 
 ### Message Flow
 
