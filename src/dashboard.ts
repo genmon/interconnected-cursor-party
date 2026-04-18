@@ -37,32 +37,35 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   }
 
   async reconcile() {
-    const entries = Object.entries(this.state.traffic);
-    const next: Record<string, TrafficEntry> = {};
-    for (const [href, entry] of entries) {
-      // Runtime guard against legacy `Record<string, number>` entries
-      // that may still be in storage from before Task 1.
-      if (
-        !entry ||
-        typeof entry !== "object" ||
-        typeof entry.name !== "string"
-      ) {
-        continue;
-      }
-      const { name } = entry;
-      try {
-        const stub = await getAgentByName<Env, PresenceAgent>(
-          this.env.PRESENCE_SERVER,
-          name
-        );
-        const count = await stub.getConnectionCount();
+    const entries = Object.entries(this.state.traffic).filter(
+      ([, entry]) =>
+        entry && typeof entry === "object" && typeof entry.name === "string"
+    );
+    const results = await Promise.all(
+      entries.map(async ([href, { name }]) => {
+        try {
+          const stub = await getAgentByName<Env, PresenceAgent>(
+            this.env.PRESENCE_SERVER,
+            name
+          );
+          const count = await stub.getConnectionCount();
+          return { href, name, count };
+        } catch (err) {
+          // Drop on error: reconcile's purpose is to clear stale entries.
+          console.error(`Reconcile failed for ${href} (${name}):`, err);
+          return { href, name, count: 0 };
+        }
+      })
+    );
+    // Atomic apply: input gates don't cover RPC awaits, so this prevents
+    // queued updateTraffic calls from being clobbered by a stale snapshot.
+    await this.ctx.blockConcurrencyWhile(async () => {
+      const next: Record<string, TrafficEntry> = {};
+      for (const { href, name, count } of results) {
         if (count > 0) next[href] = { name, count };
-      } catch (err) {
-        // Drop on error: reconcile's purpose is to clear stale entries.
-        console.error(`Reconcile failed for ${href} (${name}):`, err);
       }
-    }
-    this.setState({ ...this.state, traffic: next });
+      this.setState({ ...this.state, traffic: next });
+    });
     this.broadcastState();
   }
 
