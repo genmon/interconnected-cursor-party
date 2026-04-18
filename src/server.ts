@@ -21,6 +21,7 @@ export type ConnectionWithUser = Connection<{
 }>;
 
 const BROADCAST_INTERVAL = 1000 / 60; // 60fps
+const REPORT_INTERVAL = 500; // throttle dashboard reports to max 1 per 500ms
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +48,9 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
 
   lastBroadcast = 0;
   interval: ReturnType<typeof setInterval> | null = null;
+
+  lastReport = 0;
+  reportInterval: ReturnType<typeof setInterval> | null = null;
 
   onConnect(
     connection: Connection,
@@ -140,10 +144,26 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
     this.scheduleBroadcast().catch((err) => {
       console.error(err);
     });
-    this.reportToDashboard();
   }
 
   reportToDashboard() {
+    const now = Date.now();
+    const ago = now - this.lastReport;
+    if (ago >= REPORT_INTERVAL) {
+      this._reportToDashboard();
+    } else if (!this.reportInterval) {
+      this.reportInterval = setInterval(() => {
+        this._reportToDashboard();
+        if (this.reportInterval) {
+          clearInterval(this.reportInterval);
+          this.reportInterval = null;
+        }
+      }, REPORT_INTERVAL - ago);
+    }
+  }
+
+  _reportToDashboard() {
+    this.lastReport = Date.now();
     const href = this.state?.href;
     if (!href) return;
     const count = [...this.getConnections()].length;
@@ -207,6 +227,7 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
     wasClean: boolean
   ) {
     this.leave(connection);
+    this.reportToDashboard();
   }
 
   onError(connection: Connection, error: unknown): void;
@@ -218,11 +239,9 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
       typeof connectionOrError === "object" &&
       "id" in (connectionOrError as Connection)
     ) {
-      // leave() already calls reportToDashboard()
       this.leave(connectionOrError as ConnectionWithUser);
-    } else {
-      this.reportToDashboard();
     }
+    this.reportToDashboard();
   }
 
   async scheduleBroadcast() {
