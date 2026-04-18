@@ -218,9 +218,11 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
       typeof connectionOrError === "object" &&
       "id" in (connectionOrError as Connection)
     ) {
+      // leave() already calls reportToDashboard()
       this.leave(connectionOrError as ConnectionWithUser);
+    } else {
+      this.reportToDashboard();
     }
-    this.reportToDashboard();
   }
 
   async scheduleBroadcast() {
