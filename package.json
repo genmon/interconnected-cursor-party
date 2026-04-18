@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "build:client": "node scripts/build-client.mjs",
-    "build": "npm run build:client",
+    "build": "NODE_ENV=production npm run build:client",
     "dev": "npm run build:client && wrangler dev",
-    "deploy": "NODE_ENV=production npm run build:client && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "preview": "npm run build:client && wrangler dev --remote"
   },
   "dependencies": {
