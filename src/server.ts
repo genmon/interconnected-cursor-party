@@ -1,4 +1,4 @@
-import { Agent, getAgentByName, type Connection, type ConnectionContext } from "agents";
+import { Agent, callable, getAgentByName, type Connection, type ConnectionContext } from "agents";
 import type { Env } from "./index";
 import type {
   Metadata,
@@ -151,8 +151,13 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
       this.env.DASHBOARD_SERVER,
       DASHBOARD_SINGLETON
     )
-      .then((stub) => stub.updateTraffic(href, count))
+      .then((stub) => stub.updateTraffic(href, count, this.name))
       .catch((err) => console.error("Dashboard report failed:", err));
+  }
+
+  @callable()
+  getConnectionCount(): number {
+    return [...this.getConnections()].length;
   }
 
   onMessage(
@@ -207,9 +212,15 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
   onError(connection: Connection, error: unknown): void;
   onError(error: unknown): void;
   onError(connectionOrError: Connection | unknown, error?: unknown) {
-    if (connectionOrError instanceof Object && "id" in (connectionOrError as Connection)) {
+    console.error("PresenceAgent onError", error ?? connectionOrError);
+    if (
+      connectionOrError &&
+      typeof connectionOrError === "object" &&
+      "id" in (connectionOrError as Connection)
+    ) {
       this.leave(connectionOrError as ConnectionWithUser);
     }
+    this.reportToDashboard();
   }
 
   async scheduleBroadcast() {

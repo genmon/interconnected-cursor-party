@@ -1,10 +1,12 @@
-import { Agent, callable } from "agents";
+import { Agent, callable, getAgentByName, type Connection } from "agents";
 import type { Env } from "./index";
+import type PresenceAgent from "./server";
 
 export const DASHBOARD_SINGLETON = "index";
 
+type TrafficEntry = { name: string; count: number };
 type DashboardState = {
-  traffic: Record<string, number>;
+  traffic: Record<string, TrafficEntry>;
 };
 
 export default class DashboardServer extends Agent<Env, DashboardState> {
@@ -18,25 +20,82 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     return false;
   }
 
+  private broadcastState() {
+    this.broadcast(
+      JSON.stringify({ type: "state", traffic: this.state.traffic })
+    );
+  }
+
+  onConnect(connection: Connection) {
+    connection.send(
+      JSON.stringify({ type: "state", traffic: this.state.traffic })
+    );
+  }
+
+  async onStart() {
+    await this.scheduleEvery(86400, "reconcile");
+  }
+
+  async reconcile() {
+    const entries = Object.entries(this.state.traffic);
+    const next: Record<string, TrafficEntry> = {};
+    for (const [href, entry] of entries) {
+      // Runtime guard against legacy `Record<string, number>` entries
+      // that may still be in storage from before Task 1.
+      if (
+        !entry ||
+        typeof entry !== "object" ||
+        typeof entry.name !== "string"
+      ) {
+        continue;
+      }
+      const { name } = entry;
+      try {
+        const stub = await getAgentByName<Env, PresenceAgent>(
+          this.env.PRESENCE_SERVER,
+          name
+        );
+        const count = await stub.getConnectionCount();
+        if (count > 0) next[href] = { name, count };
+      } catch (err) {
+        // Drop on error: reconcile's purpose is to clear stale entries.
+        console.error(`Reconcile failed for ${href} (${name}):`, err);
+      }
+    }
+    this.setState({ ...this.state, traffic: next });
+    this.broadcastState();
+  }
+
   @callable()
-  updateTraffic(href: string, userCount: number) {
+  updateTraffic(href: string, userCount: number, name: string) {
     const traffic = { ...this.state.traffic };
     if (userCount <= 0) {
       delete traffic[href];
     } else {
-      traffic[href] = userCount;
+      traffic[href] = { name, count: userCount };
     }
     this.setState({ ...this.state, traffic });
+    this.broadcastState();
   }
 
   async onRequest(req: Request) {
     if (req.method === "GET") {
       const traffic = this.state.traffic;
-      const sorted = Object.entries(traffic).sort(([, a], [, b]) => b - a);
+      const sorted = Object.entries(traffic).sort(
+        ([, a], [, b]) => b.count - a.count
+      );
 
       const rows = sorted
-        .map(([href, count]) => `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`)
+        .map(
+          ([href, { count }]) =>
+            `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`
+        )
         .join("\n");
+
+      const totalUsers = Object.values(traffic).reduce(
+        (sum, v) => sum + v.count,
+        0
+      );
 
       const html = `<!DOCTYPE html>
 <html>
@@ -53,11 +112,58 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
 </head>
 <body>
   <h1>Cursor Party Dashboard</h1>
-  <p>${sorted.length} active page${sorted.length !== 1 ? "s" : ""}, ${Object.values(traffic).reduce((a, b) => a + b, 0)} total users</p>
+  <p id="summary">${sorted.length} active page${sorted.length !== 1 ? "s" : ""}, ${totalUsers} total users</p>
   <table>
     <thead><tr><th>Users</th><th>Page</th></tr></thead>
     <tbody>${rows || "<tr><td colspan=\"2\">No active sessions</td></tr>"}</tbody>
   </table>
+<script>
+(function() {
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function render(traffic) {
+    var entries = Object.entries(traffic).sort(function(a, b) {
+      return b[1].count - a[1].count;
+    });
+    var total = entries.reduce(function(s, e) { return s + e[1].count; }, 0);
+    var summary = document.getElementById("summary");
+    if (summary) {
+      summary.textContent = entries.length + " active page" +
+        (entries.length !== 1 ? "s" : "") + ", " + total + " total users";
+    }
+    var tbody = document.querySelector("tbody");
+    if (tbody) {
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2">No active sessions</td></tr>';
+      } else {
+        tbody.innerHTML = entries.map(function(e) {
+          var href = e[0];
+          var count = e[1].count;
+          return '<tr><td>' + count + '</td><td><a href="' +
+            escapeHtml(href) + '">' + escapeHtml(href) + '</a></td></tr>';
+        }).join("");
+      }
+    }
+  }
+  var ws;
+  function connect() {
+    var proto = location.protocol === "https:" ? "wss:" : "ws:";
+    ws = new WebSocket(proto + "//" + location.host + "/dashboard");
+    ws.onmessage = function(ev) {
+      try {
+        var msg = JSON.parse(ev.data);
+        if (msg && msg.type === "state") render(msg.traffic);
+      } catch (_) {}
+    };
+    ws.onclose = function() { setTimeout(connect, 2000); };
+    ws.onerror = function() { try { ws.close(); } catch (_) {} };
+  }
+  connect();
+})();
+</script>
 </body>
 </html>`;
 
