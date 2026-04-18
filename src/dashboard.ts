@@ -1,4 +1,4 @@
-import { Agent, callable, getAgentByName, type Connection } from "agents";
+import { Agent, getAgentByName, type Connection } from "agents";
 import type { Env } from "./index";
 import type PresenceAgent from "./server";
 
@@ -9,10 +9,30 @@ type DashboardState = {
   traffic: Record<string, TrafficEntry>;
 };
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!
+  );
+}
+
+function safeHref(href: string): string {
+  try {
+    const u = new URL(href);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "#";
+  } catch {
+    return "#";
+  }
+  return href;
+}
+
 export default class DashboardServer extends Agent<Env, DashboardState> {
   static options = {
     hibernate: true,
   };
+
+  private static BROADCAST_INTERVAL_MS = 250; // 4Hz cap
+  private lastBroadcast = 0;
+  private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 
   initialState: DashboardState = { traffic: {} };
 
@@ -21,6 +41,20 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   }
 
   private broadcastState() {
+    const now = Date.now();
+    const ago = now - this.lastBroadcast;
+    if (ago >= DashboardServer.BROADCAST_INTERVAL_MS) {
+      this._doBroadcast();
+    } else if (!this.broadcastTimer) {
+      this.broadcastTimer = setTimeout(() => {
+        this.broadcastTimer = null;
+        this._doBroadcast();
+      }, DashboardServer.BROADCAST_INTERVAL_MS - ago);
+    }
+  }
+
+  private _doBroadcast() {
+    this.lastBroadcast = Date.now();
     this.broadcast(
       JSON.stringify({ type: "state", traffic: this.state.traffic })
     );
@@ -32,41 +66,49 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
     );
   }
 
+  onMessage(connection: Connection) {
+    // Dashboard is receive-only; drop anything a client sends.
+    connection.close(1003, "Dashboard is read-only");
+  }
+
   async onStart() {
     await this.scheduleEvery(86400, "reconcile");
   }
 
   async reconcile() {
-    const entries = Object.entries(this.state.traffic);
-    const next: Record<string, TrafficEntry> = {};
-    for (const [href, entry] of entries) {
-      // Runtime guard against legacy `Record<string, number>` entries
-      // that may still be in storage from before Task 1.
-      if (
-        !entry ||
-        typeof entry !== "object" ||
-        typeof entry.name !== "string"
-      ) {
-        continue;
+    const entries = Object.entries(this.state.traffic).filter(
+      ([, entry]) =>
+        entry && typeof entry === "object" && typeof entry.name === "string"
+    );
+    const results = await Promise.all(
+      entries.map(async ([href, { name }]) => {
+        try {
+          const stub = await getAgentByName<Env, PresenceAgent>(
+            this.env.PRESENCE_SERVER,
+            name
+          );
+          const count = await stub.getConnectionCount();
+          return { href, count };
+        } catch (err) {
+          // Drop on error: reconcile's purpose is to clear stale entries.
+          console.error(`Reconcile failed for ${href} (${name}):`, err);
+          return { href, count: 0 };
+        }
+      })
+    );
+    // Merge into current state: only DELETE entries whose RPC returned 0.
+    // Counts and new entries from updateTraffic during the fan-out are
+    // fresher than our RPC snapshot, so leave them alone.
+    await this.ctx.blockConcurrencyWhile(async () => {
+      const traffic = { ...this.state.traffic };
+      for (const { href, count } of results) {
+        if (count === 0) delete traffic[href];
       }
-      const { name } = entry;
-      try {
-        const stub = await getAgentByName<Env, PresenceAgent>(
-          this.env.PRESENCE_SERVER,
-          name
-        );
-        const count = await stub.getConnectionCount();
-        if (count > 0) next[href] = { name, count };
-      } catch (err) {
-        // Drop on error: reconcile's purpose is to clear stale entries.
-        console.error(`Reconcile failed for ${href} (${name}):`, err);
-      }
-    }
-    this.setState({ ...this.state, traffic: next });
+      this.setState({ ...this.state, traffic });
+    });
     this.broadcastState();
   }
 
-  @callable()
   updateTraffic(href: string, userCount: number, name: string) {
     const traffic = { ...this.state.traffic };
     if (userCount <= 0) {
@@ -86,10 +128,11 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
       );
 
       const rows = sorted
-        .map(
-          ([href, { count }]) =>
-            `<tr><td>${count}</td><td><a href="${href}">${href}</a></td></tr>`
-        )
+        .map(([href, { count }]) => {
+          const safe = escapeHtml(safeHref(href));
+          const text = escapeHtml(href);
+          return `<tr><td>${count}</td><td><a href="${safe}">${text}</a></td></tr>`;
+        })
         .join("\n");
 
       const totalUsers = Object.values(traffic).reduce(
@@ -102,12 +145,18 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
 <head>
   <title>Cursor Party Dashboard</title>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; }
     th:first-child, td:first-child { width: 80px; text-align: right; }
-    a { color: #0066cc; }
+    a { color: #0066cc; word-break: break-all; }
+    @media (max-width: 600px) {
+      body { margin: 20px auto; padding: 0 12px; }
+      th, td { padding: 6px 8px; }
+      th:first-child, td:first-child { width: 56px; }
+    }
   </style>
 </head>
 <body>
@@ -152,10 +201,22 @@ export default class DashboardServer extends Agent<Env, DashboardState> {
   function connect() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(proto + "//" + location.host + "/dashboard");
+    var pendingTraffic = null;
+    var rafPending = false;
     ws.onmessage = function(ev) {
       try {
         var msg = JSON.parse(ev.data);
-        if (msg && msg.type === "state") render(msg.traffic);
+        if (msg && msg.type === "state") {
+          pendingTraffic = msg.traffic;
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(function() {
+              rafPending = false;
+              if (pendingTraffic) render(pendingTraffic);
+              pendingTraffic = null;
+            });
+          }
+        }
       } catch (_) {}
     };
     ws.onclose = function() { setTimeout(connect, 2000); };
