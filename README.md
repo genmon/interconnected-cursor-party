@@ -164,3 +164,33 @@ You can modify the code in this repo to change the display of the cursors. You'l
 ### Customizing your Worker name
 
 Edit `wrangler.jsonc` and change the `name` field to customize your Worker's URL.
+
+## Dashboard
+
+The Worker serves a real-time leaderboard at `/dashboard` — an HTML page that lists every page currently hosting cursors, ranked by active user count, and updates live as people come and go.
+
+In production, visit:
+
+```
+https://cursor-party.YOUR-ACCOUNT.workers.dev/dashboard
+```
+
+Behind the scenes, the page opens a WebSocket to the same path (`wss://cursor-party.YOUR-ACCOUNT.workers.dev/dashboard`). A single `DashboardServer` Durable Object aggregates traffic from all presence rooms and broadcasts state to connected dashboard clients, throttled to 4Hz.
+
+Unlike the cursor protocol (which uses msgpack), dashboard messages are plain JSON. The server sends one message type:
+
+```json
+{
+  "type": "state",
+  "traffic": {
+    "https://example.org/": { "name": "aHR0cHM6Ly9leGFtcGxlLm9yZy8", "count": 3 },
+    "https://example.org/about": { "name": "aHR0cHM6Ly9leGFtcGxlLm9yZy9hYm91dA", "count": 1 }
+  }
+}
+```
+
+- Keys in `traffic` are the full page URLs.
+- `name` is the opaque ID of the presence room reporting the traffic (the base64-encoded URL path used as the Durable Object room name).
+- `count` is the number of currently connected users on that page.
+
+The dashboard is receive-only; the server closes the connection if a client tries to send anything.
