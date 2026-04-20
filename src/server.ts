@@ -290,7 +290,6 @@ export default class PresenceAgent extends Agent<Env, { href?: string }> {
       presence: this.presence,
       remove: this.remove,
     } satisfies PartyMessage;
-    //this.broadcast(JSON.stringify(update));
     const encoded = encodePartyMessage(update);
     this.broadcast(encoded);
     this.add = {};
